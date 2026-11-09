@@ -1,0 +1,1649 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>上班時間的盡頭 · The End of Office Hours</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,500;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Noto+Serif+TC:wght@300;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#ece6da; --dim:rgba(236,230,218,.56); --faint:rgba(236,230,218,.16);
+  --accent:#ffb46e; --cold:#a8d8ff;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#020405;overflow:hidden;color:var(--ink);
+  font-family:"Noto Serif TC","Cormorant Garamond",serif;-webkit-font-smoothing:antialiased;
+  user-select:none;-webkit-user-select:none}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none;outline:none}
+#c.dragging{cursor:grabbing}
+#c.hovering{cursor:pointer}
+
+#hud{position:fixed;inset:0;pointer-events:none;opacity:0;transition:opacity 1.6s ease}
+#hud.on{opacity:1}
+#hud.hidden{opacity:0 !important}
+
+.title{position:absolute;left:clamp(16px,4vw,52px);top:clamp(16px,4.5vh,44px)}
+.title h1{font-weight:300;font-size:clamp(20px,2.4vw,34px);letter-spacing:.34em;line-height:1.2}
+.title .en{font-family:"Cormorant Garamond",serif;font-style:italic;font-weight:300;
+  font-size:clamp(11px,1vw,14px);letter-spacing:.42em;text-transform:uppercase;color:var(--dim);margin-top:.7em}
+.title .rule{width:54px;height:1px;background:var(--faint);margin-top:16px}
+
+.clock{position:absolute;right:clamp(16px,4vw,52px);top:clamp(16px,4.5vh,44px);text-align:right}
+.clock .digits{font-family:"JetBrains Mono",monospace;font-weight:300;font-size:clamp(24px,2.9vw,42px);
+  letter-spacing:.05em;font-variant-numeric:tabular-nums;transition:color 2s, text-shadow 2s}
+.clock .digits.free{color:var(--accent);text-shadow:0 0 24px rgba(255,160,90,.45)}
+.clock .label{font-size:11px;letter-spacing:.28em;color:var(--dim);margin-top:8px}
+.clock .label i{font-family:"Cormorant Garamond",serif;font-size:13px;letter-spacing:.06em}
+.clock .label b{font-family:"JetBrains Mono",monospace;font-weight:400;color:var(--ink);letter-spacing:.06em;margin-left:.6em}
+.progress{width:clamp(170px,17vw,240px);height:22px;margin:6px 0 0 auto;position:relative;pointer-events:auto;cursor:ew-resize;touch-action:none}
+.progress .track{position:absolute;left:0;right:0;top:50%;height:1px;background:var(--faint);transition:height .25s, background .25s;transform:translateY(-50%)}
+.progress:hover .track,.progress.active .track{height:3px;background:rgba(236,230,218,.26)}
+.progress i{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,var(--cold),var(--ink) 70%,var(--accent))}
+#knob{position:absolute;top:50%;left:0;width:9px;height:9px;border-radius:50%;background:var(--ink);transform:translate(-50%,-50%);
+  box-shadow:0 0 12px rgba(236,230,218,.55);transition:width .2s, height .2s}
+.progress:hover #knob,.progress.active #knob{width:13px;height:13px}
+.scrubhint{font-size:10px;letter-spacing:.22em;color:rgba(236,230,218,.4);margin-top:2px}
+.scrubhint i{font-family:"Cormorant Garamond",serif;font-size:12px;letter-spacing:.03em}
+.counter{margin-top:14px;font-size:11px;letter-spacing:.24em;color:var(--dim);opacity:0;transition:opacity 1s}
+.counter.on{opacity:1}
+.counter b{font-family:"JetBrains Mono",monospace;color:var(--accent);font-weight:400;margin-left:.5em;letter-spacing:.04em}
+.counter i{font-family:"Cormorant Garamond",serif;font-size:13px;letter-spacing:.04em}
+
+.subtitle{position:absolute;left:50%;bottom:clamp(96px,15vh,150px);transform:translateX(-50%);
+  width:min(92vw,960px);text-align:center}
+.subtitle .zh{font-size:clamp(18px,2vw,29px);font-weight:300;letter-spacing:.26em;padding-left:.26em;
+  text-shadow:0 0 18px rgba(0,0,0,.85),0 0 42px rgba(0,0,0,.6),0 1px 2px rgba(0,0,0,.7)}
+.subtitle::before{content:"";position:absolute;left:50%;top:50%;width:120%;height:260%;transform:translate(-50%,-50%);
+  background:radial-gradient(closest-side,rgba(4,4,8,.42),rgba(4,4,8,0));opacity:0;transition:opacity 1.3s;pointer-events:none;z-index:-1}
+.subtitle.show::before{opacity:1}
+.subtitle .en{font-family:"Cormorant Garamond",serif;font-style:italic;font-weight:300;font-size:clamp(14px,1.4vw,20px);
+  color:var(--dim);letter-spacing:.08em;margin-top:.65em;text-shadow:0 0 20px rgba(0,0,0,.8)}
+.subtitle>div{opacity:0;transform:translateY(10px);filter:blur(8px);
+  transition:opacity 1.3s ease, transform 1.6s cubic-bezier(.2,.7,.2,1), filter 1.3s ease}
+.subtitle .en{transition-delay:.25s}
+.subtitle.show>div{opacity:1;transform:none;filter:blur(0)}
+.subtitle{transition:bottom 1.6s cubic-bezier(.2,.7,.2,1)}
+#hud.ending .subtitle{bottom:clamp(190px,30vh,280px)}
+
+.hints{position:absolute;left:clamp(16px,4vw,52px);bottom:clamp(16px,4.5vh,40px);font-size:11px;line-height:2.25;
+  color:var(--dim);letter-spacing:.14em}
+.hints{transition:opacity 1.6s}
+.hints.quiet{opacity:.45}
+@media (max-width:1100px){.hints.quiet{opacity:0}}
+.hints span{font-family:"Cormorant Garamond",serif;font-style:italic;font-size:13px;letter-spacing:.03em;margin-left:.5em;opacity:.75}
+.hints kbd{font-family:"JetBrains Mono",monospace;font-size:10px;border:1px solid var(--faint);border-radius:4px;padding:1px 6px;margin-right:.6em;color:var(--ink);letter-spacing:0}
+
+.controls{position:absolute;right:clamp(16px,4vw,52px);bottom:clamp(16px,4.5vh,40px);display:flex;gap:10px;pointer-events:auto}
+button.pill{font:inherit;font-size:11px;letter-spacing:.2em;color:var(--ink);background:rgba(8,12,14,.38);
+  border:1px solid var(--faint);border-radius:999px;padding:10px 16px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  cursor:pointer;transition:background .35s, border-color .35s, color .35s, transform .2s}
+button.pill:hover{border-color:rgba(236,230,218,.48)}
+button.pill:active{transform:scale(.97)}
+button.pill i{font-family:"Cormorant Garamond",serif;font-size:12px;letter-spacing:.04em;opacity:.7;margin-left:.4em}
+#hold.active{background:rgba(255,180,110,.18);border-color:var(--accent);color:#fff}
+#hold.done{opacity:.35;pointer-events:none}
+
+/* 結尾：再上一次班＋收集冊＋製作 · ending bar */
+#endbar{position:absolute;left:50%;bottom:clamp(28px,6vh,62px);transform:translateX(-50%) translateY(8px);opacity:0;
+  pointer-events:none;transition:opacity 1.4s, transform 1.4s;display:flex;flex-direction:column;align-items:center;gap:14px;
+  width:min(92vw,560px)}
+#endbar.on{opacity:1;pointer-events:auto;transform:translateX(-50%)}
+#endbar .endrow{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+#endbar .tally{font-size:11px;letter-spacing:.2em;color:var(--dim)}
+#endbar .tally b{font-family:"JetBrains Mono",monospace;font-weight:400;color:var(--accent);letter-spacing:.04em}
+#endbar .tally i{font-family:"Cormorant Garamond",serif;font-size:13px;letter-spacing:.04em}
+#openBook b{font-family:"JetBrains Mono",monospace;font-weight:400;color:var(--accent);margin-left:.5em;letter-spacing:.02em}
+
+/* a4不想上班 製作 · credit link */
+.credit{display:inline-flex;align-items:baseline;gap:.5em;color:var(--dim);text-decoration:none;font-size:11px;letter-spacing:.22em;
+  pointer-events:auto;border-bottom:1px solid transparent;transition:color .3s, border-color .3s}
+.credit i{font-family:"Cormorant Garamond",serif;font-size:13px;letter-spacing:.04em}
+.credit:hover,.credit:focus-visible{color:var(--ink);border-color:var(--faint);outline:none}
+.title .credit{margin-top:12px}
+#intro .credit{margin-top:2.2em}
+
+/* 收集冊 · collection book */
+[hidden]{display:none!important}
+#book{position:fixed;inset:0;z-index:6;display:grid;place-items:center;background:rgba(2,4,6,.62);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.book-inner{width:min(100%,880px);max-height:100%;display:flex;flex-direction:column;background:rgba(10,14,17,.92);
+  border:1px solid var(--faint);border-radius:14px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+.book-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:22px 24px 16px;border-bottom:1px solid var(--faint)}
+.book-head h3{font-weight:300;font-size:clamp(18px,2vw,24px);letter-spacing:.24em}
+.book-head .en{font-family:"Cormorant Garamond",serif;font-style:italic;font-size:14px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin-top:4px}
+.book-head .right{display:flex;align-items:center;gap:14px}
+.book-head .count{font-family:"JetBrains Mono",monospace;font-size:13px;color:var(--dim);font-variant-numeric:tabular-nums}
+.book-head .count b{color:var(--accent);font-weight:400;font-size:20px}
+.book-body{overflow-y:auto;padding:8px 24px 20px;display:grid;gap:22px;overscroll-behavior:contain}
+.book-sec h4{display:flex;justify-content:space-between;align-items:baseline;font-weight:500;font-size:13px;letter-spacing:.2em;
+  padding:14px 0 8px;border-bottom:1px solid var(--faint);margin-bottom:6px}
+.book-sec h4 i{font-family:"Cormorant Garamond",serif;font-weight:300;font-size:13px;letter-spacing:.06em;color:var(--dim);margin-left:.6em}
+.book-sec h4 span{font-family:"JetBrains Mono",monospace;font-weight:300;font-size:11px;letter-spacing:.04em;color:var(--dim)}
+.book-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr));gap:4px 18px;list-style:none}
+.book-list li{display:flex;gap:.7em;align-items:baseline;padding:7px 0;border-bottom:1px dashed rgba(236,230,218,.07);min-width:0}
+.book-list .who{flex:none;width:3.6em;font-size:11px;letter-spacing:.1em;color:var(--dim)}
+.book-list .txt{min-width:0}
+.book-list .zh{font-size:14px;letter-spacing:.05em;line-height:1.5}
+.book-list .en{font-family:"Cormorant Garamond",serif;font-style:italic;font-size:13px;color:var(--dim);line-height:1.3}
+.book-list li.new .zh{color:var(--accent)}
+.book-list li.locked .zh{font-family:"JetBrains Mono",monospace;color:rgba(236,230,218,.28);letter-spacing:.3em}
+.book-list li.locked .who{color:rgba(236,230,218,.22)}
+.book-foot{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;padding:14px 24px 18px;border-top:1px solid var(--faint);
+  font-size:11px;letter-spacing:.12em;color:var(--dim)}
+.book-foot i{font-family:"Cormorant Garamond",serif;font-size:13px;letter-spacing:.03em}
+@media (max-width:720px){.book-head,.book-body,.book-foot{padding-left:16px;padding-right:16px}}
+
+#intro{position:fixed;inset:0;display:grid;place-items:center;z-index:5;cursor:pointer;
+  background:radial-gradient(ellipse at 50% 55%,rgba(2,5,7,.35),rgba(2,4,5,.9) 75%);
+  transition:opacity 2s ease, visibility 2s}
+#intro.gone{opacity:0;visibility:hidden}
+.intro-inner{text-align:center;padding:24px}
+.intro-inner .kicker{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.5em;color:var(--dim)}
+.intro-inner h2{font-weight:300;font-size:clamp(34px,6.4vw,84px);letter-spacing:.32em;padding-left:.32em;margin:.55em 0 .25em;
+  text-shadow:0 0 40px rgba(120,200,230,.25)}
+.intro-inner .en{font-family:"Cormorant Garamond",serif;font-style:italic;font-weight:300;font-size:clamp(15px,1.9vw,24px);
+  letter-spacing:.34em;text-transform:uppercase;color:var(--dim)}
+.intro-inner .cta{margin-top:3.6em;font-size:13px;letter-spacing:.42em;animation:breathe 2.8s ease-in-out infinite}
+.intro-inner .cta span{display:block;font-family:"Cormorant Garamond",serif;font-style:italic;letter-spacing:.2em;font-size:14px;color:var(--dim);margin-top:.5em}
+.intro-inner .note{margin-top:2.6em;font-size:11px;letter-spacing:.18em;color:rgba(236,230,218,.36)}
+@keyframes breathe{0%,100%{opacity:.45}50%{opacity:1}}
+
+/* 彩蛋台詞 · overheard lines floating above desks */
+#eggs{position:absolute;inset:0;overflow:hidden}
+.egg{position:absolute;left:0;top:0;max-width:min(66vw,320px);display:flex;flex-direction:column;gap:2px;
+  background:rgba(6,10,13,.5);border-radius:9px;padding:6px 11px 7px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  opacity:0;will-change:transform,opacity;transition:opacity .45s ease;text-align:left}
+.egg.on{opacity:1}
+.egg .line{display:flex;gap:.55em;align-items:baseline}
+.egg .who{flex:none;font-size:11px;letter-spacing:.16em;color:var(--dim);padding-top:1px}
+.egg .zh{font-size:clamp(13px,1.3vw,17px);letter-spacing:.06em;line-height:1.45;text-shadow:0 0 12px rgba(0,0,0,.9),0 1px 2px rgba(0,0,0,.8)}
+.egg .en{font-family:"Cormorant Garamond",serif;font-style:italic;font-size:clamp(11px,1vw,13.5px);color:var(--dim);
+  line-height:1.3;padding-left:.2em;text-shadow:0 0 10px rgba(0,0,0,.9)}
+.egg::after{content:"";position:absolute;left:14px;bottom:-9px;width:1px;height:8px;background:var(--faint)}
+.egg[data-type="msg"]{background:rgba(14,20,24,.72);border:1px solid rgba(168,216,255,.28);border-radius:10px;padding:7px 11px 8px;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 6px 24px rgba(0,0,0,.35)}
+.egg[data-type="msg"] .who{color:var(--cold)}
+.egg[data-type="os"] .zh{font-style:italic}
+.egg[data-type="os"] .zh::before{content:"（"}.egg[data-type="os"] .zh::after{content:"）"}
+.egg[data-type="gossip"] .zh{opacity:.82;letter-spacing:.14em}
+.egg[data-type="gossip"] .zh::before{content:"⋯ "}
+.egg[data-type="yes"] .who{color:#d9c9a8}
+.egg[data-type="early"]{background:rgba(40,22,10,.55);border:1px solid rgba(255,180,110,.45);border-radius:10px;padding:7px 11px 8px}
+.egg[data-type="early"] .zh,.egg[data-type="early"] .who{color:var(--accent)}
+@media (max-width:720px){.egg .en{display:none}}
+#flash{position:fixed;inset:0;pointer-events:none;background:#fff;opacity:0;mix-blend-mode:screen}
+#err{position:fixed;inset:0;display:none;place-items:center;text-align:center;padding:24px;line-height:2;color:var(--dim)}
+
+@media (max-width:720px){
+  .hints{display:none}
+  .controls{left:16px;right:16px;justify-content:center}
+  .subtitle{bottom:96px}
+  .title h1{letter-spacing:.22em}
+}
+</style>
+</head>
+<body>
+<canvas id="c" tabindex="0"></canvas>
+
+<div id="hud">
+  <div id="eggs"></div>
+  <div class="title">
+    <h1>上班時間的盡頭</h1>
+    <div class="en">The End of Office Hours</div>
+    <div class="rule"></div>
+    <a class="credit" href="https://www.instagram.com/a4ux_reels/" target="_blank" rel="noopener">a4不想上班 製作<i>@a4ux_reels ↗</i></a>
+  </div>
+  <div class="clock">
+    <div class="digits" id="digits">--:--:--</div>
+    <div class="label" id="clockLabel">距離下班 <i>until clock-out</i><b id="remain">00:18:00</b></div>
+    <div class="progress" id="scrub" title="拖曳推進時間 · drag to skip ahead"><div class="track"><i id="bar"></i></div><span id="knob"></span></div>
+    <div class="scrubhint">拖曳時間條 <i>drag the bar to skip ahead</i></div>
+    <div class="counter" id="counter">提早下班 <i>clocked out early</i><b id="freedN">0</b></div>
+  </div>
+  <div class="subtitle" id="sub"><div class="zh" id="subZh"></div><div class="en" id="subEn"></div></div>
+  <div class="hints" id="hints">
+    <div><kbd>DRAG</kbd>拖曳環顧<span>look around</span></div>
+    <div><kbd>SCROLL</kbd>滾輪推進時間<span>push time forward</span></div>
+    <div><kbd>CLICK</kbd>點一塊螢幕，讓它提早下班<span>free a screen early</span></div>
+    <div><kbd>SPACE</kbd>按住加速<span>hold to hurry the clock</span></div>
+    <div><kbd>BAR</kbd>拖曳右上時間條<span>drag the time bar</span></div>
+  </div>
+  <div class="controls">
+    <button class="pill" id="hold">按住加速<i>Hold to hurry</i></button>
+    <button class="pill" id="mute">聲音 開<i>Sound on</i></button>
+  </div>
+  <div id="endbar">
+    <div class="tally">這次收集 <b id="runN">+0</b>　·　累積 <b id="totalN">0 / 70</b><i>　lines collected</i></div>
+    <div class="endrow">
+      <button class="pill" id="again">再上一次班<i>Clock in again</i></button>
+      <button class="pill" id="openBook">收集冊<i>Collection</i></button>
+    </div>
+    <a class="credit" href="https://www.instagram.com/a4ux_reels/" target="_blank" rel="noopener">a4不想上班 製作<i>@a4ux_reels ↗</i></a>
+  </div>
+</div>
+
+<div id="intro">
+  <div class="intro-inner">
+    <div class="kicker" id="kicker">-- : -- &nbsp;·&nbsp; FLOOR 23</div>
+    <h2>上班時間的盡頭</h2>
+    <div class="en">The End of Office Hours</div>
+    <div class="cta">點擊打卡進入<span>click to clock in</span></div>
+    <div class="note">建議開啟聲音 · best with sound on</div>
+    <a class="credit" id="introCredit" href="https://www.instagram.com/a4ux_reels/" target="_blank" rel="noopener">a4不想上班 製作<i>@a4ux_reels ↗</i></a>
+  </div>
+</div>
+<div id="book" hidden>
+  <div class="book-inner" role="dialog" aria-modal="true" aria-labelledby="bookTitle">
+    <div class="book-head">
+      <div><h3 id="bookTitle">上班彩蛋收集冊</h3><div class="en">Overheard at the Office</div></div>
+      <div class="right"><div class="count"><b id="bookCount">0</b> / 70</div><button class="pill" id="bookClose">關閉<i>Close</i></button></div>
+    </div>
+    <div class="book-body" id="bookBody"></div>
+    <div class="book-foot">
+      <span>每次上班隨機聽到一部分；點螢幕讓人提早下班，才收集得到「提早下班」。<i>Clock in again to hear the rest.</i></span>
+      <a class="credit" href="https://www.instagram.com/a4ux_reels/" target="_blank" rel="noopener">a4不想上班 製作<i>@a4ux_reels ↗</i></a>
+    </div>
+  </div>
+</div>
+<div id="flash"></div>
+<div id="err">這個瀏覽器無法啟動 WebGL。<br><i>WebGL is not available in this browser.</i></div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+/* =========================================================
+   基本設定 · setup
+   ========================================================= */
+const $ = id => document.getElementById(id);
+const canvas = $('c');
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+} catch (e) { $('err').style.display = 'grid'; $('intro').remove(); throw e; }
+const DPR = Math.min(window.devicePixelRatio || 1, 1.5);
+renderer.setPixelRatio(DPR);
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 3000);
+const mirrorCam = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 3000);
+mirrorCam.layers.set(1);
+
+const END = 18 * 3600, DAY = 86400, MORNING = 6 * 3600;
+const CAM0 = new THREE.Vector3(0, 2.2, 12);
+const CLOCK_POS = new THREE.Vector3(0, 46, -260);
+const CLOCK_R = 34;
+
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const rng = mulberry32(20261109);
+const clamp01 = x => Math.min(1, Math.max(0, x));
+const smooth = (a, b, x) => { const t = clamp01((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+const lerp = (a, b, t) => a + (b - a) * t;
+
+/* 共用 uniforms · shared uniforms */
+const U = {
+  uTime: { value: 0 }, uRelease: { value: 1e6 }, uOffFrac: { value: 0 }, uWaveR: { value: 220 },
+  uFogColor: { value: new THREE.Color() }, uFogDensity: { value: 0.011 },
+  uSunDir: { value: new THREE.Vector3(0, 0.15, -1).normalize() },
+  uNight: { value: 0 }, uOffice: { value: 1 }, uOfficeLight: { value: 1 },
+  uWater: { value: 0 }, uLantern: { value: 0 },
+  uCamPos: { value: new THREE.Vector3() },
+  uMouse: { value: new THREE.Vector3(0, -100, 0) }, uMouseStr: { value: 0 }, uHover: { value: -1 },
+  uRipples: { value: Array.from({ length: 6 }, () => new THREE.Vector4(0, 0, -1e3, 0)) },
+  uReflTex: { value: null }, uMirrorVP: { value: new THREE.Matrix4() }, uPx: { value: innerHeight * DPR }
+};
+
+/* =========================================================
+   GLSL 共用片段 · shared GLSL
+   ========================================================= */
+const NOISE = /* glsl */`
+float hash12(vec2 p){vec3 p3=fract(vec3(p.xyx)*.1031);p3+=dot(p3,p3.yzx+33.33);return fract((p3.x+p3.y)*p3.z);}
+float hash13(vec3 p3){p3=fract(p3*.1031);p3+=dot(p3,p3.zyx+31.32);return fract((p3.x+p3.y)*p3.z);}
+float vnoise(vec2 p){vec2 i=floor(p),f=fract(p);vec2 u=f*f*(3.-2.*f);
+  return mix(mix(hash12(i),hash12(i+vec2(1,0)),u.x),mix(hash12(i+vec2(0,1)),hash12(i+vec2(1,1)),u.x),u.y);}
+float fbm(vec2 p){float a=.5,s=0.;for(int i=0;i<5;i++){s+=a*vnoise(p);p=p*2.03+vec2(1.7,9.2);a*=.5;}return s;}
+mat3 rotX(float a){float c=cos(a),s=sin(a);return mat3(1.,0.,0.,0.,c,s,0.,-s,c);}
+mat3 rotY(float a){float c=cos(a),s=sin(a);return mat3(c,0.,-s,0.,1.,0.,s,0.,c);}
+mat3 rotZ(float a){float c=cos(a),s=sin(a);return mat3(c,s,0.,-s,c,0.,0.,0.,1.);}
+`;
+
+/* 天空函式：辦公室的暗 → 夕陽 → 夜。sky: office gloom → sunset → night */
+const SKY = /* glsl */`
+uniform vec3 uSunDir; uniform float uNight, uOffice, uOfficeLight, uTime;
+vec3 skyColor(vec3 dir, float sunMul){
+  float h = dir.y; float hh = max(h,0.);
+  vec3 office = mix(vec3(0.010,0.017,0.021), vec3(0.002,0.003,0.005), smoothstep(0.0,0.45,h));
+  office += vec3(0.022,0.055,0.066)*exp(-abs(h)*13.)*(0.35+0.65*uOfficeLight);
+  float sd = max(dot(dir,uSunDir),0.);
+  vec3 fl = normalize(vec3(dir.x,0.,dir.z)+vec3(1e-5)); vec3 sf = normalize(vec3(uSunDir.x,0.,uSunDir.z)+vec3(1e-5));
+  float warm = 0.5+0.5*dot(fl,sf);
+  float sunH = uSunDir.y;
+  vec3 horizon = mix(vec3(0.22,0.06,0.13), vec3(1.35,0.40,0.09), pow(warm,3.));
+  horizon *= 0.25+0.75*smoothstep(-0.12,0.06,sunH);
+  vec3 mid = mix(vec3(0.05,0.025,0.10), vec3(0.30,0.075,0.10), pow(warm,3.));
+  vec3 zen = vec3(0.006,0.010,0.045);
+  vec3 sunset = mix(horizon, mid, smoothstep(0.0,0.10,hh));
+  sunset = mix(sunset, zen, smoothstep(0.06,0.5,hh));
+  sunset = mix(sunset, horizon*0.3, smoothstep(0.0,-0.25,h));
+  vec3 night = mix(vec3(0.030,0.040,0.105), vec3(0.003,0.005,0.018), smoothstep(0.,0.5,hh));
+  night += vec3(0.40,0.11,0.06)*exp(-hh*8.)*pow(warm,3.)*0.55;
+  if(h>0.0){
+    vec2 cuv = dir.xz/(h+0.1);
+    float c = fbm(cuv*0.75+vec2(uTime*0.010,uTime*0.004));
+    float band = smoothstep(0.0,0.05,h)*(1.-smoothstep(0.22,0.5,h));
+    float cl = smoothstep(0.50,0.80,c)*band;
+    vec3 lit = mix(vec3(0.035,0.014,0.04), vec3(1.6,0.5,0.16), clamp(pow(sd,7.)*1.1+pow(warm,5.)*0.22,0.,1.));
+    lit += vec3(0.5,0.12,0.06)*pow(warm,2.)*smoothstep(0.62,0.5,c)*0.6;
+    sunset = mix(sunset, lit, cl*0.85);
+    night = mix(night, vec3(0.05,0.035,0.06)+vec3(0.25,0.08,0.05)*pow(warm,4.)*exp(-hh*6.), cl*0.7);
+    vec3 sp = dir*230.; vec3 ip = floor(sp); float r = hash13(ip);
+    float d = length(fract(sp)-0.5);
+    float tw = 0.55+0.45*sin(uTime*(1.+r*5.)+r*80.);
+    night += vec3(0.9,0.95,1.15)*step(0.9962,r)*smoothstep(0.32,0.0,d)*tw*2.4*smoothstep(0.03,0.25,h)*(1.-cl);
+  }
+  vec3 sunCol = vec3(1.9,0.85,0.38);
+  sunset += sunCol*(pow(sd,8.)*0.22 + pow(sd,90.)*0.6)*sunMul;
+  sunset += vec3(5.0,2.6,1.1)*smoothstep(0.99955,0.99985,sd)*sunMul*smoothstep(-0.004,0.004,h);
+  vec3 col = mix(sunset, night, uNight);
+  return mix(col, office, uOffice);
+}`;
+
+/* =========================================================
+   天空 · sky dome
+   ========================================================= */
+const sky = new THREE.Mesh(
+  new THREE.SphereGeometry(1500, 48, 24),
+  new THREE.ShaderMaterial({
+    uniforms: U, side: THREE.BackSide, depthWrite: false, fog: false,
+    vertexShader: `varying vec3 vDir; void main(){ vDir = position; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
+    fragmentShader: NOISE + SKY + `varying vec3 vDir; void main(){ gl_FragColor = vec4(skyColor(normalize(vDir),1.),1.); }`
+  })
+);
+sky.renderOrder = -10;
+sky.frustumCulled = false;
+scene.add(sky);
+
+/* =========================================================
+   地板：地毯 → 水面 · floor: carpet → water
+   ========================================================= */
+const reflRT = new THREE.WebGLRenderTarget(256, 256, { type: THREE.HalfFloatType });
+U.uReflTex.value = reflRT.texture;
+const floorMat = new THREE.ShaderMaterial({
+  uniforms: U,
+  vertexShader: `varying vec3 vWorld; void main(){ vec4 w = modelMatrix*vec4(position,1.); vWorld = w.xyz; gl_Position = projectionMatrix*viewMatrix*w; }`,
+  fragmentShader: NOISE + SKY + /* glsl */`
+  uniform float uWater, uFogDensity, uLantern; uniform vec3 uCamPos; uniform vec4 uRipples[6];
+  uniform sampler2D uReflTex; uniform mat4 uMirrorVP;
+  varying vec3 vWorld;
+  float wh(vec2 p){
+    float h = vnoise(p*0.32+vec2(uTime*0.16,uTime*0.09))*0.65
+            + vnoise(p*1.05-vec2(uTime*0.26,-uTime*0.17))*0.28
+            + vnoise(p*3.2+vec2(uTime*0.45,uTime*0.3))*0.1;
+    for(int i=0;i<6;i++){
+      vec4 r = uRipples[i]; float age = uTime-r.z;
+      if(age>0. && age<9.){ float d = length(p-r.xy); float x = d-age*5.5;
+        h += sin(x*2.6)*exp(-x*x*0.35)*exp(-age*0.42)*2.2; }
+    }
+    return h;
+  }
+  void main(){
+    vec3 toP = vWorld-uCamPos; float dist = length(toP); vec3 V = toP/dist;
+    vec2 g = vWorld.xz;
+    vec2 tl = abs(fract(g*0.5)-0.5);
+    float seam = smoothstep(0.484,0.5,max(tl.x,tl.y));
+    float n = vnoise(g*4.)*0.6+vnoise(g*17.)*0.4;
+    float tileShade = hash12(floor(g*0.5))*0.3;
+    vec3 carpet = vec3(0.018,0.024,0.030)*(0.7+0.55*n+tileShade)*(1.-seam*0.45);
+    float pool = pow(0.5+0.5*cos(g.x*6.2831/4.0),6.)*pow(0.5+0.5*cos((g.y-0.)*6.2831/5.0),2.);
+    carpet += vec3(0.020,0.028,0.034)*pool*uOfficeLight;
+    carpet *= 0.4+0.6*uOfficeLight;
+    vec3 col = carpet;
+    if(uWater>0.001){
+      float e = 0.14;
+      float h0 = wh(g), hx = wh(g+vec2(e,0.)), hz = wh(g+vec2(0.,e));
+      float amp = 0.30/(1.+dist*0.02);
+      vec3 N = normalize(vec3(-(hx-h0)/e*amp, 1., -(hz-h0)/e*amp));
+      vec3 R = reflect(V,N); R.y = abs(R.y)+0.003;
+      vec3 refl = skyColor(normalize(R),1.0);
+      float fr = 0.025+0.975*pow(1.-max(dot(-V,N),0.),5.);
+      vec3 deep = mix(vec3(0.012,0.005,0.016), vec3(0.002,0.003,0.010), uNight);
+      vec3 w = mix(deep, refl, clamp(fr+0.05,0.,1.));
+      vec4 cp = uMirrorVP*vec4(vWorld,1.);
+      vec2 ruv = cp.xy/cp.w*0.5+0.5 + N.xz*0.06;
+      vec3 rl = texture2D(uReflTex, ruv).rgb;
+      w += rl*(0.45+0.55*fr);
+      w += vec3(1.0,0.42,0.14)*0.05*uLantern*(0.4+vnoise(g*0.6+uTime*0.15));
+      col = mix(carpet, w, uWater);
+    }
+    vec3 fogC = skyColor(normalize(vec3(V.x,0.02,V.z)),0.0);
+    float f = 1.-exp(-uFogDensity*uFogDensity*dist*dist);
+    gl_FragColor = vec4(mix(col, fogC, f),1.);
+  }`
+});
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), floorMat);
+floor.rotation.x = -Math.PI / 2;
+scene.add(floor);
+
+/* =========================================================
+   燈光 · lights
+   ========================================================= */
+const hemi = new THREE.HemisphereLight(0x6f8796, 0x0b0f12, 0.5);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xcfe3ff, 1.1);
+sun.position.set(6, 20, 8);
+scene.add(sun);
+scene.fog = new THREE.FogExp2(0x081215, 0.011);
+
+/* =========================================================
+   辦公隔間 · cubicles (instanced)
+   ========================================================= */
+const desks = [];
+for (let j = 0; j < 46; j++) for (let i = 0; i < 36; i++) {
+  const x = (i - 17.5) * 3.1;
+  if (Math.abs(x) < 2.4) continue;
+  if (rng() < 0.035) continue;
+  const z = 4 - j * 3.0;
+  desks.push({ x: x + (rng() - 0.5) * 0.12, z, yaw: (rng() - 0.5) * 0.07, seed: rng() });
+}
+const N = desks.length;
+
+function part(w, h, d, x, y, z, hex) {
+  const g = new THREE.BoxGeometry(w, h, d); g.translate(x, y, z);
+  const c = new THREE.Color(hex); const cols = new Float32Array(g.attributes.position.count * 3);
+  for (let k = 0; k < cols.length; k += 3) { cols[k] = c.r; cols[k + 1] = c.g; cols[k + 2] = c.b; }
+  g.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+  return g;
+}
+const deskGeo = mergeGeometries([
+  part(1.72, 0.05, 0.86, 0, 0.74, 0, 0x7a7f86),          // 桌面 desktop
+  part(0.46, 0.70, 0.76, 0.56, 0.36, 0, 0x3a3e45),       // 抽屜 pedestal
+  part(0.04, 0.72, 0.04, -0.8, 0.36, 0.36, 0x2a2d32),    // 桌腳 leg
+  part(2.05, 1.38, 0.06, 0, 0.69, -0.49, 0x2b3946),      // 背板 partition
+  part(0.06, 1.38, 1.25, -1.03, 0.69, 0.1, 0x2b3946),    // 側板 side partition
+  part(0.07, 0.24, 0.06, 0, 0.88, -0.15, 0x16181b),      // 螢幕支架 stand
+  part(0.26, 0.02, 0.18, 0, 0.775, -0.15, 0x16181b),
+  part(0.46, 0.02, 0.15, 0, 0.775, 0.16, 0x8d9096),      // 鍵盤 keyboard
+  part(0.08, 0.02, 0.11, 0.36, 0.775, 0.17, 0x8d9096),   // 滑鼠 mouse
+  part(0.08, 0.11, 0.08, -0.55, 0.82, 0.05, 0xc9c3b6),   // 馬克杯 mug
+  part(0.52, 0.07, 0.5, 0.05, 0.5, 0.78, 0x1c1e23),      // 椅座 seat
+  part(0.5, 0.58, 0.06, 0.05, 0.86, 1.03, 0x1c1e23),     // 椅背 back
+  part(0.06, 0.44, 0.06, 0.05, 0.25, 0.78, 0x101114),
+  part(0.56, 0.04, 0.56, 0.05, 0.03, 0.78, 0x101114)
+]);
+const monGeo = new THREE.BoxGeometry(0.64, 0.4, 0.035);
+monGeo.translate(0, 1.08, -0.12);
+
+const infoArr = new Float32Array(N * 4);
+const deskColors = new Float32Array(N * 3);
+const dummy = new THREE.Object3D();
+const deskMesh = new THREE.InstancedMesh(deskGeo, null, N);
+const monMesh = new THREE.InstancedMesh(monGeo, null, N);
+desks.forEach((d, k) => {
+  dummy.position.set(d.x, 0, d.z); dummy.rotation.set(0, d.yaw, 0); dummy.updateMatrix();
+  deskMesh.setMatrixAt(k, dummy.matrix); monMesh.setMatrixAt(k, dummy.matrix);
+  d.dist = Math.hypot(d.x - CAM0.x, d.z - CAM0.z);
+  infoArr.set([d.dist, d.seed, 1e6, k], k * 4);
+  const v = 0.82 + rng() * 0.25; deskColors.set([v, v, v * (0.97 + rng() * 0.06)], k * 3);
+});
+const infoAttr = new THREE.InstancedBufferAttribute(infoArr, 4);
+infoAttr.setUsage(THREE.DynamicDrawUsage);
+deskGeo.setAttribute('aInfo', infoAttr);
+monGeo.setAttribute('aInfo', infoAttr);
+deskMesh.instanceColor = new THREE.InstancedBufferAttribute(deskColors, 3);
+
+const deskMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.84, metalness: 0.04 });
+deskMat.onBeforeCompile = sh => {
+  sh.uniforms.uTime = U.uTime; sh.uniforms.uRelease = U.uRelease; sh.uniforms.uOffFrac = U.uOffFrac;
+  sh.vertexShader = sh.vertexShader
+    .replace('#include <common>', `#include <common>
+      attribute vec4 aInfo; uniform float uTime, uRelease, uOffFrac; varying float vGlow;`)
+    .replace('#include <begin_vertex>', `#include <begin_vertex>
+      float rt = uRelease + 1.4 + aInfo.x*0.02 + aInfo.y*1.6;
+      float sk = clamp((uTime-rt)/6.5,0.,1.); sk = sk*sk*(3.-2.*sk);
+      transformed.y -= sk*3.2;
+      vec3 dl = position - vec3(0.,1.0,-0.1);
+      dl.z = dl.z>0. ? dl.z*0.55 : dl.z*5.;
+      dl.y *= 1.25;
+      float freed = step(aInfo.z, uTime);
+      float off = step(aInfo.y, uOffFrac);
+      vGlow = exp(-dot(dl,dl)*1.5)*(1.-freed)*(1.-off)*(1.-sk);`);
+  sh.fragmentShader = sh.fragmentShader
+    .replace('#include <common>', `#include <common>
+      varying float vGlow;`)
+    .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+      totalEmissiveRadiance += vec3(0.16,0.30,0.52)*vGlow;`);
+};
+deskMesh.material = deskMat;
+deskMesh.frustumCulled = false;
+scene.add(deskMesh);
+
+/* 螢幕 → 燈籠 · monitors that become lanterns */
+const monMat = new THREE.ShaderMaterial({
+  uniforms: U,
+  vertexShader: NOISE + /* glsl */`
+  attribute vec4 aInfo;
+  uniform float uTime, uRelease, uOffFrac, uHover, uFogDensity;
+  varying vec2 vUv; varying float vFront, vState, vWarm, vFog, vHover, vSeed, vT;
+  const vec3 C = vec3(0.,1.08,-0.12);
+  void main(){
+    float seed = aInfo.y;
+    float gT = uRelease + 0.9 + aInfo.x*0.016 + seed*3.2;
+    float ft = min(aInfo.z, gT);
+    float t = max(uTime-ft,0.);
+    float up = step(ft,uTime);
+    vSeed = seed; vT = t;
+    vec3 p = position - C;
+    vUv = p.xy/vec2(0.64,0.4)+0.5;
+    vFront = step(0.5, normal.z);
+    float e = smoothstep(0.,3.,t);
+    p *= 1.0+0.55*e;
+    p = rotY(t*(0.12+seed*0.28)*(seed>0.5?1.:-1.))*rotZ(sin(t*0.7+seed*30.)*0.14*e)*rotX(sin(t*0.5+seed*12.)*0.12*e)*p;
+    vec4 wp = modelMatrix*instanceMatrix*vec4(p+C,1.);
+    float sp = 0.5+fract(seed*7.31)*0.9;
+    wp.y += up*(t*sp*0.85 + t*t*0.004);
+    wp.x += up*sin(t*0.21+seed*40.)*t*0.13;
+    wp.z += up*(-t*0.32 + cos(t*0.17+seed*17.)*t*0.09);
+    vec4 mv = viewMatrix*wp;
+    gl_Position = projectionMatrix*mv;
+    float d = -mv.z;
+    vFog = 1.-exp(-uFogDensity*uFogDensity*d*d);
+    float off = step(seed, uOffFrac);
+    float nearT = 1.-smoothstep(0.0,0.03,seed-uOffFrac);
+    float fl = step(0.4, hash12(vec2(floor(uTime*13.), seed*311.)));
+    vState = (1.-off)*mix(1., fl, nearT*step(uOffFrac,seed)*step(0.001,uOffFrac));
+    vWarm = up*smoothstep(0.,1.8,t);
+    vHover = 1.-step(0.5, abs(aInfo.w-uHover));
+  }`,
+  fragmentShader: NOISE + /* glsl */`
+  uniform float uTime; uniform vec3 uFogColor;
+  varying vec2 vUv; varying float vFront, vState, vWarm, vFog, vHover, vSeed, vT;
+  void main(){
+    vec3 bezel = vec3(0.010,0.011,0.013);
+    vec3 col = bezel;
+    vec2 uv = vUv;
+    if(vFront>0.5){
+      float inside = step(0.035,uv.x)*step(uv.x,0.965)*step(0.055,uv.y)*step(uv.y,0.945);
+      float kind = hash12(vec2(vSeed*13.,4.));
+      float rows = 15.;
+      float row = floor(uv.y*rows);
+      float len = 0.18+0.72*hash12(vec2(row,vSeed*91.));
+      float txt = step(uv.x,len)*step(0.14,uv.x)*step(0.3,fract(uv.y*rows))*step(fract(uv.y*rows),0.72)*step(uv.y,0.84);
+      float bar = step(0.86,uv.y);
+      float side = step(uv.x,0.11);
+      vec3 base = vec3(0.16,0.36,0.72);
+      if(kind>0.55) base = vec3(0.50,0.58,0.68);
+      if(kind>0.82){ base = vec3(0.14,0.48,0.34); txt = max(txt, step(0.92,fract(uv.x*8.))+step(0.9,fract(uv.y*rows))); }
+      if(kind<0.08){ base = vec3(0.62,0.20,0.20); }
+      vec3 scr = base*(0.5+0.42*txt+0.3*bar+0.14*side);
+      scr *= 0.93+0.07*sin(uv.y*320.+uTime*7.);
+      scr *= 1.05;
+      col = mix(bezel, scr, inside*vState);
+      if(vHover>0.5){ col = mix(col, vec3(2.4,1.35,0.6), 0.45+0.15*sin(uTime*8.)); }
+    }
+    float flick = 1.0+0.22*sin(uTime*3.1+vSeed*40.)+0.09*sin(uTime*7.7+vSeed*13.);
+    vec3 warmC = mix(vec3(3.2,0.95,0.16), vec3(2.8,1.25,0.35), hash12(vec2(vSeed,7.)))*flick;
+    vec2 c = uv-0.5;
+    float body = vFront>0.5 ? (1.1-dot(c,c)*2.6) : 0.45;
+    vec3 lant = warmC*body;
+    col = mix(col, lant, vWarm);
+    col = mix(col, uFogColor, vFog*(1.-vWarm*0.8));
+    gl_FragColor = vec4(col,1.);
+  }`
+});
+monMesh.material = monMat;
+monMesh.frustumCulled = false;
+monMesh.layers.enable(1);
+scene.add(monMesh);
+
+/* =========================================================
+   日光燈 · fluorescent panels
+   ========================================================= */
+const panelPos = [];
+for (let iz = 0; iz < 30; iz++) for (let ix = 0; ix < 31; ix++) {
+  const x = (ix - 15) * 4, z = 12 - iz * 5;
+  panelPos.push([x, z, Math.hypot(x, z - CAM0.z), rng()]);
+}
+const panelGeo = new THREE.PlaneGeometry(1.5, 0.2);
+panelGeo.rotateX(Math.PI / 2);
+const panelAttr = new Float32Array(panelPos.length * 2);
+const panelMesh = new THREE.InstancedMesh(panelGeo, null, panelPos.length);
+panelPos.forEach((p, k) => {
+  dummy.position.set(p[0], 4.6, p[1]); dummy.rotation.set(0, 0, 0); dummy.updateMatrix();
+  panelMesh.setMatrixAt(k, dummy.matrix); panelAttr[k * 2] = p[2]; panelAttr[k * 2 + 1] = p[3];
+});
+panelGeo.setAttribute('aPanel', new THREE.InstancedBufferAttribute(panelAttr, 2));
+panelMesh.material = new THREE.ShaderMaterial({
+  uniforms: U, side: THREE.DoubleSide,
+  vertexShader: NOISE + /* glsl */`
+  attribute vec2 aPanel; uniform float uTime, uWaveR, uRelease, uFogDensity; varying float vOn, vFog;
+  void main(){
+    float d = aPanel.x;
+    float on = step(d, uWaveR);
+    float band = step(uWaveR,d)*(1.-step(uWaveR+12.,d));
+    float fl = step(0.55, hash12(vec2(floor(uTime*17.), aPanel.y*97.)));
+    vOn = max(on, band*fl*0.85);
+    float t = max(uTime-uRelease,0.);
+    vec3 p = position*(1.-smoothstep(0.,1.5,t));
+    vec4 mv = viewMatrix*modelMatrix*instanceMatrix*vec4(p,1.);
+    gl_Position = projectionMatrix*mv;
+    float dd = -mv.z; vFog = 1.-exp(-uFogDensity*uFogDensity*dd*dd);
+  }`,
+  fragmentShader: `uniform vec3 uFogColor; varying float vOn, vFog;
+  void main(){ vec3 col = mix(vec3(0.012,0.014,0.016), vec3(1.55,1.72,1.85), vOn); gl_FragColor = vec4(mix(col,uFogColor,vFog*0.85),1.); }`
+});
+panelMesh.frustumCulled = false;
+scene.add(panelMesh);
+
+/* =========================================================
+   紙張 → 紙飛機 · A4 sheets that fold into birds
+   ========================================================= */
+const FLOAT_N = 1500;
+const PN = N + FLOAT_N;
+const paperBase = new THREE.BufferGeometry();
+paperBase.setAttribute('position', new THREE.Float32BufferAttribute([
+  -0.35, 0, -0.5, 0, 0, -0.5, 0.35, 0, -0.5,
+  -0.35, 0, 0.5, 0, 0, 0.5, 0.35, 0, 0.5], 3));
+paperBase.setIndex([0, 3, 1, 1, 3, 4, 1, 4, 2, 2, 4, 5]);
+const paperGeo = new THREE.InstancedBufferGeometry();
+paperGeo.index = paperBase.index;
+paperGeo.attributes.position = paperBase.attributes.position;
+const pHome = new Float32Array(PN * 4), pRand = new Float32Array(PN * 4), pRel = new Float32Array(PN).fill(1e6);
+for (let k = 0; k < PN; k++) {
+  if (k < N) {
+    const d = desks[k];
+    pHome.set([d.x + (rng() - 0.5) * 0.9, 0.78, d.z + 0.02 + rng() * 0.22, 1], k * 4);
+  } else {
+    pHome.set([(rng() - 0.5) * 46, 1.0 + rng() * 3.2, 10 - rng() * 75, 0], k * 4);
+  }
+  pRand.set([rng(), rng(), rng(), rng()], k * 4);
+}
+paperGeo.setAttribute('aHome', new THREE.InstancedBufferAttribute(pHome, 4));
+paperGeo.setAttribute('aRand', new THREE.InstancedBufferAttribute(pRand, 4));
+const pRelAttr = new THREE.InstancedBufferAttribute(pRel, 1);
+pRelAttr.setUsage(THREE.DynamicDrawUsage);
+paperGeo.setAttribute('aRelease', pRelAttr);
+paperGeo.instanceCount = PN;
+
+const paperMat = new THREE.ShaderMaterial({
+  uniforms: U, side: THREE.DoubleSide,
+  vertexShader: NOISE + /* glsl */`
+  attribute vec4 aHome; attribute vec4 aRand; attribute float aRelease;
+  uniform float uTime, uRelease, uFogDensity, uMouseStr; uniform vec3 uMouse;
+  varying vec2 vUv; varying vec3 vN; varying float vFog, vFly, vSeed;
+  vec3 flight(float t){
+    float r = 1.5+aRand.z*5.5;
+    float a0 = aRand.w*6.2831;
+    float dirS = aRand.y>0.5?1.:-1.;
+    float a = a0 + t*(0.45+aRand.x*0.6)*dirS;
+    float sp = 0.6+aRand.y*0.9;
+    vec3 o = vec3(cos(a)-cos(a0), 0., sin(a)-sin(a0))*r;
+    o.y = t*1.35*sp + t*t*0.012*sp;
+    o.z -= t*0.9*sp + t*t*0.035;
+    o.x += sin(t*0.33+aRand.x*10.)*t*0.28;
+    return o;
+  }
+  void main(){
+    float isDesk = aHome.w;
+    float rt = min(aRelease, uRelease + 0.6 + aRand.x*6.0 + length(aHome.xz)*0.012);
+    float tt = max(uTime-rt,0.);
+    float fly = smoothstep(0.,1.8,tt);
+    vFly = fly; vSeed = aRand.x;
+    float sc = 0.34*(0.85+aRand.z*0.3);
+    vec3 lp = position*sc;
+    vUv = vec2(position.x/0.7+0.5, position.z+0.5);
+    vec3 drift = (1.-isDesk)*vec3(sin(uTime*0.13+aRand.y*6.28)*0.55, sin(uTime*0.27+aRand.z*6.28)*0.28, cos(uTime*0.11+aRand.w*6.28)*0.55);
+    vec3 home = aHome.xyz + drift;
+    mat3 preR = isDesk>0.5 ? rotY(aRand.w*6.28)
+      : rotY(uTime*0.18*(aRand.x-0.5)+aRand.w*6.28)*rotX(sin(uTime*0.3+aRand.y*9.)*0.7+aRand.z*3.)*rotZ(sin(uTime*0.23+aRand.x*7.)*0.55);
+    // lift-off: sheets peel off before folding
+    vec3 o = flight(tt);
+    vec3 v = flight(tt+0.08)-o;
+    vec3 f = normalize(v+vec3(0.,1e-4,0.));
+    vec3 r = normalize(cross(f, vec3(0.,1.,0.))+vec3(1e-4,0.,0.));
+    vec3 u = cross(r,f);
+    float flap = sin(uTime*(8.+aRand.y*6.)+aRand.x*30.);
+    vec3 fp = lp;
+    float ax = abs(fp.x);
+    fp.y += ax*(0.75+0.85*flap)*fly;
+    fp.x *= mix(1.,0.72,fly);
+    mat3 flyR = mat3(r,u,-f);
+    vec3 pos = home + mix(preR*lp, flyR*fp, fly) + o;
+    vec3 dm = pos-uMouse; float lm = length(dm);
+    pos += (1.-fly)*normalize(dm+vec3(1e-4))*max(0.,3.2-lm)*0.75*uMouseStr;
+    float w = fly*uMouseStr*exp(-lm*0.07)*0.55;
+    float sa = uTime*(0.9+aRand.y*0.8)+aRand.w*6.28;
+    vec3 orbit = uMouse + vec3(cos(sa)*(2.5+aRand.z*4.), sin(sa*1.7+aRand.x*5.)*1.8, sin(sa)*(2.5+aRand.z*4.));
+    pos = mix(pos, orbit, w);
+    vN = normalize(mix(preR*vec3(0.,1.,0.), flyR*vec3(0.,1.,0.), fly));
+    vec4 mv = viewMatrix*vec4(pos,1.);
+    gl_Position = projectionMatrix*mv;
+    float d = -mv.z; vFog = 1.-exp(-uFogDensity*uFogDensity*d*d);
+  }`,
+  fragmentShader: NOISE + /* glsl */`
+  uniform vec3 uFogColor, uSunDir; uniform float uOffice, uNight, uOfficeLight, uTime;
+  varying vec2 vUv; varying vec3 vN; varying float vFog, vFly, vSeed;
+  void main(){
+    vec2 uv = vUv;
+    float rows = 22.; float row = floor(uv.y*rows);
+    float ln = step(0.45,fract(uv.y*rows))*step(0.12,uv.x)*step(uv.x,0.12+0.76*hash12(vec2(row,vSeed*91.)))*step(0.1,uv.y)*step(uv.y,0.8);
+    float head = step(0.86,uv.y)*step(uv.y,0.9)*step(0.12,uv.x)*step(uv.x,0.5);
+    vec3 paper = vec3(0.93,0.91,0.87)*(1.-ln*0.32-head*0.5);
+    vec3 N = normalize(vN); if(!gl_FrontFacing) N = -N;
+    float top = abs(N.y);
+    vec3 offL = vec3(0.34,0.41,0.5)*(0.3+0.7*top)*(0.2+0.8*uOfficeLight) + vec3(0.05,0.09,0.15);
+    float sd = abs(dot(N,uSunDir));
+    vec3 sunL = (vec3(1.7,0.78,0.40)*sd + vec3(0.42,0.22,0.32))*(1.-uNight)
+              + (vec3(0.75,0.40,0.18) + vec3(0.06,0.08,0.18))*uNight;
+    vec3 col = paper*mix(sunL, offL, uOffice);
+    col += vec3(1.1,0.55,0.22)*vFly*0.22*(1.-uOffice);
+    col = mix(col, uFogColor, vFog);
+    gl_FragColor = vec4(col,1.);
+  }`
+});
+const papers = new THREE.Mesh(paperGeo, paperMat);
+papers.frustumCulled = false;
+papers.layers.enable(1);
+scene.add(papers);
+
+/* =========================================================
+   空氣中的塵 → 餘燼 · dust motes → embers
+   ========================================================= */
+const DUST = 3200;
+const dustArr = new Float32Array(DUST * 4);
+for (let k = 0; k < DUST; k++) dustArr.set([(rng() - 0.5) * 90, rng() * 4.5, 14 - rng() * 110, rng()], k * 4);
+const dustGeo = new THREE.BufferGeometry();
+dustGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(DUST * 3), 3));
+dustGeo.setAttribute('aD', new THREE.BufferAttribute(dustArr, 4));
+const dust = new THREE.Points(dustGeo, new THREE.ShaderMaterial({
+  uniforms: U, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  vertexShader: /* glsl */`
+  attribute vec4 aD; uniform float uTime, uRelease, uPx, uOfficeLight, uFogDensity;
+  varying float vA, vWarm;
+  void main(){
+    float s = aD.w;
+    float tr = uTime-uRelease;
+    float warm = smoothstep(2.,8.,tr);
+    vec3 p = aD.xyz;
+    p.x += sin(uTime*0.09+s*30.)*1.6;
+    p.z += cos(uTime*0.07+s*21.)*1.6;
+    float yPre = 0.3+mod(p.y + uTime*0.035*(0.4+s), 4.5);
+    float yPost = mod(p.y*6. + max(tr,0.)*(0.6+s*1.1), 46.);
+    p.y = mix(yPre, yPost, warm);
+    vec4 mv = viewMatrix*vec4(p,1.);
+    gl_Position = projectionMatrix*mv;
+    float d = -mv.z;
+    gl_PointSize = (mix(1.6, 3.2, warm)+s*1.5)*uPx/(d*42.);
+    float fog = exp(-uFogDensity*uFogDensity*d*d);
+    vA = mix(0.22*(0.35+0.65*uOfficeLight), 0.9*(0.5+0.5*sin(uTime*2.+s*50.)), warm)*fog*smoothstep(0.3,2.,d);
+    vWarm = warm;
+  }`,
+  fragmentShader: `varying float vA, vWarm;
+  void main(){ vec2 c = gl_PointCoord-0.5; float a = smoothstep(0.5,0.0,length(c));
+    vec3 col = mix(vec3(0.55,0.75,0.9), vec3(2.2,1.0,0.35), vWarm);
+    gl_FragColor = vec4(col*a*vA, 1.); }`
+}));
+dust.frustumCulled = false;
+scene.add(dust);
+
+/* =========================================================
+   巨大時鐘 → 夕陽 · the giant clock that becomes the sun
+   ========================================================= */
+const clockGroup = new THREE.Group();
+clockGroup.position.copy(CLOCK_POS);
+scene.add(clockGroup);
+const clockMats = [];
+function basic(rgb, extra = {}) {
+  const m = new THREE.MeshBasicMaterial({ color: new THREE.Color().setRGB(...rgb), transparent: true, fog: false, depthWrite: false, ...extra });
+  clockMats.push(m); return m;
+}
+function makeClockTexture() {
+  const s = 1024, cv = document.createElement('canvas'); cv.width = cv.height = s;
+  const g = cv.getContext('2d'); const c = s / 2;
+  const grd = g.createRadialGradient(c, c, 0, c, c, c);
+  grd.addColorStop(0, 'rgba(40,70,80,0.50)'); grd.addColorStop(0.9, 'rgba(10,22,28,0.38)'); grd.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = grd; g.beginPath(); g.arc(c, c, c * 0.985, 0, Math.PI * 2); g.fill();
+  for (let i = 0; i < 60; i++) {
+    const a = i / 60 * Math.PI * 2, major = i % 5 === 0;
+    const r1 = c * 0.94, r0 = c * (major ? 0.83 : 0.895);
+    g.strokeStyle = major ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,.5)'; g.lineWidth = major ? 7 : 3;
+    g.beginPath(); g.moveTo(c + Math.sin(a) * r0, c - Math.cos(a) * r0); g.lineTo(c + Math.sin(a) * r1, c - Math.cos(a) * r1); g.stroke();
+  }
+  g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = '300 96px "Cormorant Garamond", serif';
+  for (let i = 1; i <= 12; i++) { const a = i / 12 * Math.PI * 2; g.fillText(String(i), c + Math.sin(a) * c * 0.68, c - Math.cos(a) * c * 0.68 + 4); }
+  g.fillStyle = 'rgba(255,255,255,.72)';
+  g.font = '300 40px "Noto Serif TC", serif'; g.fillText('上　班　時　間', c, c + c * 0.3);
+  g.font = 'italic 300 32px "Cormorant Garamond", serif'; g.fillText('O F F I C E    H O U R S', c, c + c * 0.41);
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
+  return tex;
+}
+const faceMat = basic([1.25, 1.45, 1.55]);
+const face = new THREE.Mesh(new THREE.CircleGeometry(CLOCK_R, 96), faceMat);
+clockGroup.add(face);
+const ring = new THREE.Mesh(new THREE.TorusGeometry(CLOCK_R * 1.02, 0.32, 8, 200), basic([2.2, 2.45, 2.6]));
+clockGroup.add(ring);
+const ring2 = new THREE.Mesh(new THREE.TorusGeometry(CLOCK_R * 1.1, 0.08, 6, 200), basic([0.8, 1.1, 1.2]));
+clockGroup.add(ring2);
+function hand(w, len, back, z, rgb) {
+  const g = new THREE.BoxGeometry(w, len + back, 0.2); g.translate(0, (len - back) / 2, z);
+  const m = new THREE.Mesh(g, basic(rgb)); clockGroup.add(m); return m;
+}
+const hourHand = hand(1.3, CLOCK_R * 0.5, 3, 0.5, [2.0, 2.15, 2.25]);
+const minHand = hand(0.8, CLOCK_R * 0.8, 4, 0.8, [2.0, 2.15, 2.25]);
+const secHand = hand(0.24, CLOCK_R * 0.88, 7, 1.1, [3.2, 1.0, 0.45]);
+const cap = new THREE.Mesh(new THREE.CircleGeometry(1.1, 32), basic([3.2, 1.0, 0.45]));
+cap.position.z = 1.3; clockGroup.add(cap);
+document.fonts.load('300 96px "Cormorant Garamond"').then(() => document.fonts.load('300 40px "Noto Serif TC"', '上班時間')).catch(() => {})
+  .finally(() => { faceMat.map = makeClockTexture(); faceMat.needsUpdate = true; });
+
+function radialTex() {
+  const s = 256, cv = document.createElement('canvas'); cv.width = cv.height = s; const g = cv.getContext('2d');
+  const grd = g.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+  grd.addColorStop(0, 'rgba(255,255,255,1)'); grd.addColorStop(0.25, 'rgba(255,255,255,.35)');
+  grd.addColorStop(0.6, 'rgba(255,255,255,.08)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grd; g.fillRect(0, 0, s, s);
+  const t = new THREE.CanvasTexture(cv); return t;
+}
+const haloMat = new THREE.MeshBasicMaterial({ map: radialTex(), transparent: true, depthWrite: false, fog: false, blending: THREE.AdditiveBlending, color: new THREE.Color(0.25, 0.5, 0.6) });
+const halo = new THREE.Mesh(new THREE.PlaneGeometry(CLOCK_R * 4.6, CLOCK_R * 4.6), haloMat);
+halo.position.z = -2; clockGroup.add(halo);
+
+/* =========================================================
+   後製 · post-processing
+   ========================================================= */
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const godPass = new ShaderPass({
+  uniforms: { tDiffuse: { value: null }, uSun: { value: new THREE.Vector2(0.5, 0.6) }, uStrength: { value: 0 }, uTint: { value: new THREE.Color(1, 1, 1) }, uThresh: { value: new THREE.Vector2(1.0, 3.2) } },
+  vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
+  fragmentShader: /* glsl */`
+  uniform sampler2D tDiffuse; uniform vec2 uSun, uThresh; uniform float uStrength; uniform vec3 uTint; varying vec2 vUv;
+  void main(){
+    vec4 base = texture2D(tDiffuse, vUv);
+    if(uStrength < 0.001){ gl_FragColor = base; return; }
+    const int S = 40;
+    vec2 dlt = (vUv-uSun)/float(S)*0.88;
+    float j = fract(sin(dot(vUv*1000.,vec2(12.9898,78.233)))*43758.5453);
+    vec2 uv = vUv - dlt*j;
+    float dec = 1.; vec3 acc = vec3(0.);
+    for(int i=0;i<S;i++){
+      uv -= dlt;
+      vec3 s = texture2D(tDiffuse, uv).rgb;
+      float l = dot(s, vec3(.2126,.7152,.0722));
+      acc += s*smoothstep(uThresh.x,uThresh.y,l)*dec; dec *= 0.962;
+    }
+    gl_FragColor = vec4(base.rgb + acc/float(S)*uStrength*uTint*3.0, base.a);
+  }`
+});
+composer.addPass(godPass);
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.8, 0.6, 0.85);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+const gradePass = new ShaderPass({
+  uniforms: { tDiffuse: { value: null }, uTime: { value: 0 }, uFlash: { value: 0 }, uRes: { value: new THREE.Vector2(innerWidth, innerHeight) } },
+  vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
+  fragmentShader: /* glsl */`
+  uniform sampler2D tDiffuse; uniform float uTime, uFlash; uniform vec2 uRes; varying vec2 vUv;
+  void main(){
+    vec2 c = vUv-0.5; float r2 = dot(c,c);
+    vec2 off = c*r2*0.018;
+    vec3 col = vec3(texture2D(tDiffuse, vUv+off).r, texture2D(tDiffuse, vUv).g, texture2D(tDiffuse, vUv-off).b);
+    col *= mix(1., smoothstep(0.75,0.08,r2*1.25), 0.72);
+    col += vec3(0.0,0.008,0.012)*(1.-col);
+    col += uFlash*vec3(1.0,0.86,0.7);
+    float g = fract(sin(dot(vUv*uRes + fract(uTime*7.13)*100., vec2(12.9898,78.233)))*43758.5453);
+    col += (g-0.5)*0.045;
+    gl_FragColor = vec4(col,1.);
+  }`
+});
+composer.addPass(gradePass);
+
+/* =========================================================
+   聲音（全部即時合成）· audio, fully synthesized
+   ========================================================= */
+const Sound = {
+  ctx: null, muted: false,
+  init() {
+    if (this.ctx) return;
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    const ctx = this.ctx = new AC();
+    this.master = ctx.createGain(); this.master.gain.value = 0.9;
+    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 3;
+    this.master.connect(comp).connect(ctx.destination);
+    // reverb
+    const len = ctx.sampleRate * 4, ir = ctx.createBuffer(2, len, ctx.sampleRate);
+    for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); }
+    this.verb = ctx.createConvolver(); this.verb.buffer = ir;
+    const vg = ctx.createGain(); vg.gain.value = 0.55; this.verb.connect(vg).connect(this.master);
+    // office hum: brown noise + mains hum + fluorescent buzz
+    const nb = ctx.createBuffer(1, ctx.sampleRate * 3, ctx.sampleRate), nd = nb.getChannelData(0); let last = 0;
+    for (let i = 0; i < nd.length; i++) { last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02; nd[i] = last * 3.2; }
+    const noise = ctx.createBufferSource(); noise.buffer = nb; noise.loop = true;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 380;
+    this.hum = ctx.createGain(); this.hum.gain.value = 0;
+    noise.connect(lp).connect(this.hum); noise.start();
+    [[50, 0.05], [100, 0.022], [150, 0.008]].forEach(([f, g]) => { const o = ctx.createOscillator(); o.frequency.value = f; const gg = ctx.createGain(); gg.gain.value = g; o.connect(gg).connect(this.hum); o.start(); });
+    const bz = ctx.createOscillator(); bz.type = 'sawtooth'; bz.frequency.value = 120;
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2600; bp.Q.value = 9;
+    this.buzz = ctx.createGain(); this.buzz.gain.value = 0.012; bz.connect(bp).connect(this.buzz).connect(this.hum); bz.start();
+    this.hum.connect(this.master);
+    this.hum.gain.setTargetAtTime(0.5, ctx.currentTime, 1.5);
+    // 音樂匯流排 · music bus for the two Suno tracks
+    this.music = ctx.createGain(); this.music.gain.value = 1; this.music.connect(this.master);
+    this.buf = { office: null, clockout: null };
+    this.loadMusic();
+    // warm pad (Dmaj9) for after 18:00
+    this.pad = ctx.createGain(); this.pad.gain.value = 0;
+    const plp = ctx.createBiquadFilter(); plp.type = 'lowpass'; plp.frequency.value = 1100; plp.Q.value = 0.4;
+    this.pad.connect(plp); plp.connect(this.master); plp.connect(this.verb);
+    [146.83, 220.0, 329.63, 369.99, 554.37, 659.25].forEach((f, i) => {
+      [-4, 4].forEach(dt => {
+        const o = ctx.createOscillator(); o.type = i < 2 ? 'triangle' : 'sine'; o.frequency.value = f; o.detune.value = dt;
+        const g = ctx.createGain(); g.gain.value = 0.05 / (1 + i * 0.35);
+        const lfo = ctx.createOscillator(); lfo.frequency.value = 0.07 + i * 0.03; const lg = ctx.createGain(); lg.gain.value = 0.02 / (1 + i * 0.35);
+        lfo.connect(lg).connect(g.gain); lfo.start(); o.connect(g).connect(this.pad); o.start();
+      });
+    });
+  },
+  setMuted(m) { this.muted = m; if (this.ctx) this.master.gain.setTargetAtTime(m ? 0 : 0.9, this.ctx.currentTime, 0.15); },
+  tick(vol) {
+    if (!this.ctx) return; const ctx = this.ctx, t = ctx.currentTime;
+    const b = ctx.createBuffer(1, 800, ctx.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 8);
+    const s = ctx.createBufferSource(); s.buffer = b;
+    const hp = ctx.createBiquadFilter(); hp.type = 'bandpass'; hp.frequency.value = 3200; hp.Q.value = 2;
+    const g = ctx.createGain(); g.gain.value = vol;
+    s.connect(hp).connect(g); g.connect(this.master); g.connect(this.verb); s.start(t);
+  },
+  bell(when = 0, base = 196, vol = 0.22) {
+    if (!this.ctx) return; const ctx = this.ctx, t = ctx.currentTime + when;
+    [[1, 1], [2.0, 0.55], [2.76, 0.4], [4.07, 0.25], [5.43, 0.16], [6.8, 0.1]].forEach(([r, a], i) => {
+      const o = ctx.createOscillator(); o.frequency.value = base * r;
+      const g = ctx.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol * a, t + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 6.5 / (1 + i * 0.6));
+      o.connect(g); g.connect(this.master); g.connect(this.verb); o.start(t); o.stop(t + 7);
+    });
+  },
+  pluck(freq, vol = 0.06, when = 0) {
+    if (!this.ctx) return; const ctx = this.ctx, t = ctx.currentTime + when;
+    [[1, 1], [2, 0.3], [3.01, 0.12]].forEach(([r, a]) => {
+      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = freq * r;
+      const g = ctx.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol * a, t + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 2.4);
+      o.connect(g); g.connect(this.verb); g.connect(this.master); o.start(t); o.stop(t + 2.6);
+    });
+  },
+  /* 兩首歌：music/office.* 上班循環、music/clockout.* 18:00 切換。找不到檔案就用合成音。
+     two songs: music/office.* loops during work, music/clockout.* takes over at 18:00; synth fallback if missing */
+  async loadTrack(name) {
+    for (const ext of ['mp3', 'm4a', 'wav', 'ogg']) {
+      try {
+        const r = await fetch(`music/${name}.${ext}`, { cache: 'no-cache' });
+        if (!r.ok) continue;
+        const buf = await this.ctx.decodeAudioData(await r.arrayBuffer());
+        console.info(`[music] ${name}.${ext} loaded (${buf.duration.toFixed(1)}s)`);
+        return buf;
+      } catch (e) { /* try next extension */ }
+    }
+    return null;
+  },
+  async loadMusic() {
+    const [office, clockout, bell] = await Promise.all([this.loadTrack('office'), this.loadTrack('clockout'), this.loadTrack('bell')]);
+    this.buf = { office, clockout, bell };
+    if (S.released) { if (clockout && !this.coSrc) this.playClockout(0.2); }
+    else if (office) this.playOffice();
+  },
+  stopTrack(key, fade = 0.6) {
+    const tr = this[key]; if (!tr) return;
+    const t = this.ctx.currentTime;
+    tr.g.gain.cancelScheduledValues(t); tr.g.gain.setTargetAtTime(0, t, fade);
+    try { tr.src.stop(t + fade * 6); } catch (_) {}
+    tr.src.onended = null;
+    this[key] = null;
+  },
+  playOffice() {
+    if (!this.buf.office) return;
+    this.stopTrack('offSrc', 0.2);
+    const ctx = this.ctx, t = ctx.currentTime;
+    const src = ctx.createBufferSource(); src.buffer = this.buf.office; src.loop = true;
+    const g = ctx.createGain(); g.gain.value = 0; g.gain.setTargetAtTime(this.VOL_OFFICE, t, 1.2);
+    src.connect(g).connect(this.music); src.start(t);
+    this.offSrc = { src, g };
+    // 有上班歌時，合成的嗡嗡聲退到背景 · keep only a faint synth hum under the song
+    this.hum.gain.cancelScheduledValues(t); this.hum.gain.setTargetAtTime(0.12, t, 1.2);
+  },
+  playClockout(delay = 0.4) {
+    if (!this.buf.clockout) return;
+    const ctx = this.ctx, t = ctx.currentTime + delay;
+    const src = ctx.createBufferSource(); src.buffer = this.buf.clockout;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0, t); g.gain.setTargetAtTime(this.VOL_CLOCKOUT, t, 0.35);
+    src.connect(g).connect(this.music); src.start(t);
+    const tr = { src, g }; this.coSrc = tr;
+    // 下班歌播完後，換成合成的暖色和弦接住夜晚 · when the song ends, the warm synth pad carries the night
+    src.onended = () => {
+      if (this.coSrc !== tr) return;
+      this.coSrc = null;
+      const n = this.ctx.currentTime; this.pad.gain.cancelScheduledValues(n); this.pad.gain.setTargetAtTime(0.9, n, 3);
+    };
+  },
+  get hasClockoutSong() { return !!(this.buf && this.buf.clockout); },
+  VOL_OFFICE: 0.55, VOL_CLOCKOUT: 0.7, VOL_BELL: 0.9,
+  BELL_LEAD: 2.6,   // 寺鐘敲下後，等幾秒才讓下班歌進來 · seconds the temple bell rings alone before the song
+  get bellStrikes() { return this.buf && this.buf.bell ? 1 : 6; },
+  release() {
+    if (!this.ctx) return; const t = this.ctx.currentTime;
+    this.hum.gain.cancelScheduledValues(t); this.hum.gain.setTargetAtTime(0, t + 0.2, 1.4);
+    // 18:00：上班歌淡出 → 寺鐘一響 → 下班歌接上 · work song fades, temple bell strikes, clock-out song follows
+    this.stopTrack('offSrc', 0.5);
+    if (this.buf.bell) {
+      const src = this.ctx.createBufferSource(); src.buffer = this.buf.bell;
+      const g = this.ctx.createGain(); g.gain.value = this.VOL_BELL;
+      src.connect(g).connect(this.music); src.start(t);
+      this.bellSrc = src;
+    } else {
+      for (let i = 0; i < 6; i++) this.bell(i * 1.75, 196, this.buf.clockout ? 0.16 : 0.24);
+    }
+    if (this.buf.clockout) this.playClockout(this.buf.bell ? this.BELL_LEAD : 0.3);
+    else { this.pad.gain.cancelScheduledValues(t); this.pad.gain.setTargetAtTime(0.9, t + 2, 4); }
+  },
+  reset() {
+    if (!this.ctx) return; const t = this.ctx.currentTime;
+    this.stopTrack('coSrc', 0.4);
+    if (this.bellSrc) { try { this.bellSrc.stop(); } catch (_) {} this.bellSrc = null; }
+    this.pad.gain.cancelScheduledValues(t); this.pad.gain.setTargetAtTime(0, t, 0.8);
+    this.hum.gain.cancelScheduledValues(t); this.hum.gain.setTargetAtTime(0.5, t + 0.5, 1.2);
+    if (this.buf.office) this.playOffice();
+  }
+};
+const PENTA = [293.66, 329.63, 369.99, 440, 493.88, 587.33, 659.25, 739.99, 880];
+
+/* =========================================================
+   狀態與時間軸 · state & timeline
+   ========================================================= */
+const S = {
+  q: 0, started: false, sim: END - 1080, start: END - 1080, span: 1080, afterHours: false, day: 1,
+  releaseT: Infinity, released: false, releaseClock: END, startedAt: 0,
+  hold: false, freed: 0, cuesShown: new Set(), lastTick: 0, nextPluck: 0, ending: false
+};
+/* 讀使用者電腦的時間 · read the visitor's local clock */
+const pad2 = n => String(Math.floor(n)).padStart(2, '0');
+const fmt = s => { s = ((s % DAY) + DAY) % DAY; return `${pad2(s / 3600)}:${pad2((s % 3600) / 60)}:${pad2(s % 60)}`; };
+const hhmm = s => fmt(s).slice(0, 5);
+const DAY_ZH = ['日', '一', '二', '三', '四', '五', '六'];
+const DAY_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+function localSecs() { const d = new Date(); return { secs: d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds() + d.getMilliseconds() / 1000, day: d.getDay() }; }
+function setupFromClock() {
+  const { secs, day } = localSecs();
+  S.day = day;
+  S.afterHours = secs >= END || secs < MORNING;   // 18:00 之後或清晨：已經下班 · already off the clock
+  if (S.afterHours) { S.start = END - 1080; S.span = 1080; S.sim = secs; S.q = 0.93; }
+  else { S.start = secs; S.span = Math.max(END - secs, 1); S.sim = secs; S.q = qAt(S.span); }
+}
+/* 節奏曲線 · pacing curve
+   故事進度 q 以真實時間前進（約 STORY 秒走完）。q 對應「距離下班還剩幾秒」：
+   前段飛快 → 最後 5 分鐘放慢 → 最後 1 分鐘最慢，讓人意識到快下班了。
+   story progress q runs in real time; it maps to seconds-remaining so the day races,
+   then the last 5 minutes slow down, and the last minute crawls. */
+const STORY = 66, HOLD_MULT = 8;
+const knots = () => [[0, Math.max(S.span, 300)], [0.52, 300], [0.8, 60], [1, 0]];
+function remAt(q) {
+  const k = knots();
+  for (let i = 0; i < 3; i++) if (q <= k[i + 1][0] || i === 2) {
+    const t = clamp01((q - k[i][0]) / (k[i + 1][0] - k[i][0])); return lerp(k[i][1], k[i + 1][1], t);
+  }
+}
+function qAt(rem) {
+  const k = knots();
+  for (let i = 0; i < 3; i++) if (rem >= k[i + 1][1] || i === 2) {
+    const t = clamp01((k[i][1] - rem) / Math.max(1e-6, k[i][1] - k[i + 1][1])); return lerp(k[i][0], k[i + 1][0], t);
+  }
+}
+function setQ(q) { if (S.afterHours || S.released) return; S.q = Math.min(1, Math.max(S.q, q)); S.sim = END - remAt(S.q); }
+function durText(sec) {
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), x = Math.floor(sec % 60);
+  if (h > 0) return [`${h} 小時 ${m} 分鐘`, `${h} hour${h > 1 ? 's' : ''} ${m} minute${m === 1 ? '' : 's'}`];
+  if (m > 0) return [`${m} 分鐘`, `${m} minute${m === 1 ? '' : 's'}`];
+  return [`${x} 秒`, `${x} second${x === 1 ? '' : 's'}`];
+}
+let cuesPre = [], cuesPost = [];
+function buildCues() {
+  const weekend = S.day === 0 || S.day === 6;
+  const now = hhmm(S.sim);
+  if (S.afterHours) {
+    const off = ((S.sim - END) % DAY + DAY) % DAY;
+    const [zh, en] = durText(off);
+    cuesPre = [[0, `現在 ${now}，你已經下班 ${zh}了。`, `It's ${now}. You clocked out ${en} ago.`]];
+    if (weekend) cuesPre[0] = [0, `週${DAY_ZH[S.day]} ${now}。今天本來就不用上班。`, `${DAY_EN[S.day]}, ${now}. You weren't even supposed to work today.`];
+  } else {
+    const [zh, en] = durText(S.span);
+    cuesPre = [
+      [0, `${now}　還有 ${zh}。`, `${en[0].toUpperCase() + en.slice(1)} to go.`],
+      [0.17, '螢幕的光，比窗外的天色還亮。', 'The screens glow brighter than the sky outside.'],
+      [0.36, '有人悄悄關掉了燈。', 'Someone quietly turns off the lights.'],
+      [0.44, '未讀訊息 99+，明天再說。', 'Unread: 99+. That is tomorrow’s problem.'],
+      [0.52, '最後五分鐘。有人已經在收包包了。', 'Five minutes left. Someone is already packing up.'],
+      [0.80, '最後一分鐘，總是最長的。', 'The last minute is always the longest.']
+    ];
+    if (weekend) cuesPre.splice(1, 0, [0.08, `今天是週${DAY_ZH[S.day]}。你為什麼在這裡？`, `It's ${DAY_EN[S.day]}. Why are you even here?`]);
+    else if (S.span > 3 * 3600) cuesPre.splice(1, 0, [0.08, '盯著時鐘，它也不會走得比較快。', 'Staring at the clock won’t make it move any faster.']);
+  }
+  cuesPost = [
+    S.afterHours ? [0.3, '那就，現在下班吧。', 'Then clock out. Right now.'] : [0.3, '18:00　下班。', 'Clock out.'],
+    // 結尾字幕（與 GPT 討論後定稿）· ending lines, drafted together with GPT
+    [7, '你活下來了。', 'You made it through today.'],
+    [15, '今天，你連午餐都沒吃完。', 'You never even finished your lunch.'],
+    [23, '螢幕升成燈籠，送你一段路。', 'The screens rise as lanterns to light your way home.'],
+    [31, '改了八版的文件，摺成紙飛機。', 'Eight drafts later, the paperwork finally takes flight.'],
+    [39, '那些沒說出口的累，也算數。', 'Even the tiredness you never mentioned counts.'],
+    [47, '請拋下那些紛紛擾擾。', 'You don’t have to carry any of it home.'],
+    [55, '天黑了，未讀訊息留給明天。', 'Night has fallen. The messages can wait.'],
+    [63, '夜裡，沒有一顆星催你交件。', 'Not a single star needs this by morning.'],
+    [72, '辛苦了。明天見。', 'Get some rest. See you tomorrow.', true]
+  ];
+}
+/* 彩蛋台詞（GPT 發想、70 句）· easter-egg lines brainstormed with GPT */
+const EGGS = [{"type": "os", "who": "你", "zh": "才週二，我已經像週五了", "en": "It's Tuesday. My battery thinks it's Friday."}, {"type": "os", "who": "你", "zh": "薪水還沒進來，人先空了", "en": "Payday is pending. So is my soul."}, {"type": "os", "who": "隔壁", "zh": "這份急件昨天還不急", "en": "Funny how the deadline aged overnight."}, {"type": "os", "who": "你", "zh": "午休怎麼比微波還快", "en": "My lunch break has a skip button."}, {"type": "os", "who": "你", "zh": "工作做不完，班倒是上得完", "en": "The task list is infinite. My shift isn't."}, {"type": "os", "who": "隔壁", "zh": "我只是來領薪水的", "en": "I'm here on a strictly payroll basis."}, {"type": "os", "who": "你", "zh": "咖啡醒了，我還沒", "en": "The coffee is doing its best."}, {"type": "os", "who": "你", "zh": "這時鐘是不是領加班費", "en": "Is the clock getting paid to drag this out?"}, {"type": "os", "who": "你", "zh": "上班像充電，越充越沒電", "en": "Apparently this desk runs on reverse charging."}, {"type": "os", "who": "隔壁", "zh": "我連放空都怕被插單", "en": "Even my daydreams need a do-not-disturb sign."}, {"type": "os", "who": "你", "zh": "今天的進度是撐到現在", "en": "Today's milestone: still here."}, {"type": "os", "who": "你", "zh": "離職信又存成草稿了", "en": "My resignation has more drafts than this report."}, {"type": "os", "who": "隔壁", "zh": "需求一直變，薪水很專情", "en": "Everything changes except my paycheck."}, {"type": "os", "who": "你", "zh": "想上廁所，又怕回來多三件", "en": "One bathroom break could cost me three new tasks."}, {"type": "yes", "who": "你", "zh": "好，我先把不可能排進去", "en": "Sure. I'll squeeze that in between miracles."}, {"type": "yes", "who": "隔壁", "zh": "可以啊，我先深呼吸", "en": "Absolutely. Just give my eye a second to stop twitching."}, {"type": "yes", "who": "你", "zh": "收到，我的快樂也收掉了", "en": "Received. Joy has left the chat."}, {"type": "yes", "who": "行銷部", "zh": "好喔，這版先叫最後一版", "en": "Sure. Let's call this one Final, for now."}, {"type": "yes", "who": "你", "zh": "沒問題，我晚餐也沒了", "en": "No problem. Dinner was getting too ambitious anyway."}, {"type": "yes", "who": "隔壁", "zh": "我研究一下怎麼活著做完", "en": "I'll look into surviving the delivery process."}, {"type": "yes", "who": "你", "zh": "好，我把明天借來用", "en": "Sure. I'll put it on tomorrow's credit card."}, {"type": "yes", "who": "實習生", "zh": "了解，我先假裝有了解", "en": "Got it. Understanding will arrive separately."}, {"type": "yes", "who": "你", "zh": "可以改，先讓我閉眼一下", "en": "Happy to revise. Please allow one silent scream."}, {"type": "yes", "who": "隔壁", "zh": "好啊，我的行程本來就裝飾", "en": "Sure. My calendar was mostly decorative anyway."}, {"type": "yes", "who": "你", "zh": "我盡快，快到哪算哪", "en": "I'll give it my best available speed."}, {"type": "yes", "who": "你", "zh": "沒事，我剛剛只是靈魂出竅", "en": "All good. My soul just stepped out for a minute."}, {"type": "gossip", "who": "隔壁", "zh": "聽說新福利是多一個群組", "en": "Apparently our benefits now include more notifications."}, {"type": "gossip", "who": "茶水間", "zh": "他請半天假，大家猜了一天", "en": "Half a day off. A full day of office theories."}, {"type": "gossip", "who": "隔壁", "zh": "他換大頭貼，是不是要走了", "en": "New profile photo. Should we start signing a card?"}, {"type": "gossip", "who": "茶水間", "zh": "有人面試請假寫回診", "en": "Apparently someone's follow-up appointment had a recruiter."}, {"type": "gossip", "who": "隔壁", "zh": "他今天穿襯衫，事情不單純", "en": "He ironed a shirt. Something's definitely happening."}, {"type": "gossip", "who": "茶水間", "zh": "聽說尾牙頭獎還在簽核", "en": "The grand prize is still waiting for approval."}, {"type": "gossip", "who": "隔壁", "zh": "主管一休假，大家氣色都好了", "en": "The boss took leave. Somehow we all look rested."}, {"type": "gossip", "who": "茶水間", "zh": "他說裸辭，連便當都算好了", "en": "He says he's quitting on impulse. His lunch budget says otherwise."}, {"type": "gossip", "who": "隔壁", "zh": "新來的問幾點下班，全場安靜", "en": "The new hire asked when we leave. Nobody wanted to break it to him."}, {"type": "gossip", "who": "茶水間", "zh": "聽說那盆植物也交接三次了", "en": "Even the office plant has survived three handovers."}, {"type": "gossip", "who": "隔壁", "zh": "他們開小群，忘了踢主管", "en": "They made a secret chat. With the boss still in it."}, {"type": "gossip", "who": "茶水間", "zh": "他提離職，主管才記得他名字", "en": "He handed in his notice and finally got name recognition."}, {"type": "coworker", "who": "你", "zh": "他說補充一下，又開了半小時", "en": "His quick addition came with a second meeting."}, {"type": "coworker", "who": "隔壁", "zh": "每次說順便，都是我的事", "en": "His by-the-way always lands on my desk."}, {"type": "coworker", "who": "你", "zh": "檔名寫最終，裡面全是待補", "en": "The file says Final. The contents say good luck."}, {"type": "coworker", "who": "茶水間", "zh": "最後一口咖啡也不肯重煮", "en": "He left one drop so the next pot wouldn't be his problem."}, {"type": "coworker", "who": "你", "zh": "問他進度，他傳貼圖", "en": "I asked for an update. I got a dancing cat."}, {"type": "coworker", "who": "隔壁", "zh": "他的靜音鍵是不是要付費", "en": "Is his mute button locked behind a subscription?"}, {"type": "coworker", "who": "你", "zh": "他把收到當成做完", "en": "He considers the acknowledgment the deliverable."}, {"type": "coworker", "who": "隔壁", "zh": "信都沒看，先問我寫什麼", "en": "Apparently I also provide live email narration."}, {"type": "coworker", "who": "你", "zh": "他下班前才開始熱心", "en": "His team spirit activates five minutes before closing."}, {"type": "coworker", "who": "茶水間", "zh": "冰箱那盒便當快領年終了", "en": "That lunch has been here long enough to qualify for a bonus."}, {"type": "coworker", "who": "你", "zh": "一起做，怎麼只剩我在線", "en": "Funny how teamwork ends with just my cursor moving."}, {"type": "coworker", "who": "隔壁", "zh": "他借走充電線，順便定居", "en": "My charger has apparently moved in with him."}, {"type": "msg", "who": "主管", "zh": "在嗎？有個小東西想請你看", "en": "Got a second? I've brought a whole afternoon."}, {"type": "msg", "who": "群組", "zh": "大家先別走，五分鐘就好", "en": "Nobody leave. We're only one fake five minutes away."}, {"type": "msg", "who": "主管", "zh": "不急，今天給我就好", "en": "No rush. Just the end-of-today kind."}, {"type": "msg", "who": "群組", "zh": "收到請回覆，不用回收到", "en": "Please acknowledge, but make it creative."}, {"type": "msg", "who": "主管", "zh": "我剛剛想到一個方向", "en": "I've had an idea. Your evening may be affected."}, {"type": "msg", "who": "人資", "zh": "提醒大家，下班記得打卡", "en": "Please clock out. Leaving is a separate matter."}, {"type": "msg", "who": "主管", "zh": "這個很簡單，你順手處理", "en": "Looks easy from my side of the desk."}, {"type": "msg", "who": "群組", "zh": "會議提前，午餐帶進來吃", "en": "Lunch is now a meeting accessory."}, {"type": "msg", "who": "客戶", "zh": "大致沒問題，只改幾個地方", "en": "Love it overall. The changes are attached in twelve pages."}, {"type": "msg", "who": "主管", "zh": "你休假喔？那我簡單講", "en": "You're on leave? I'll only borrow a little of it."}, {"type": "msg", "who": "群組", "zh": "這份誰有最新版的最新版", "en": "Does anyone have the final final that came after Final?"}, {"type": "msg", "who": "主管", "zh": "明天再聊，你今晚先想一下", "en": "We'll discuss tomorrow. Please let it haunt you tonight."}, {"type": "early", "who": "你", "zh": "我先走，椅子會想我的", "en": "My chair will have to be strong."}, {"type": "early", "who": "隔壁", "zh": "謝謝你，我差點又開一個檔", "en": "You saved me. I almost opened another spreadsheet."}, {"type": "early", "who": "你", "zh": "今天的我已經停止回應", "en": "This employee is no longer responding."}, {"type": "early", "who": "行銷部", "zh": "先下線，明天再重新做人", "en": "Logging off. I'll reinstall my personality tomorrow."}, {"type": "early", "who": "實習生", "zh": "原來下班真的可以發生", "en": "So clocking out wasn't just office folklore."}, {"type": "early", "who": "你", "zh": "我走得快，工作就追不上", "en": "If I leave fast enough, the tasks can't catch me."}, {"type": "early", "who": "隔壁", "zh": "幫我跟待辦事項說聲保重", "en": "Tell my to-do list I wish it well."}, {"type": "early", "who": "你", "zh": "人先走，責任感明天來領", "en": "I'm off. I'll collect my sense of duty tomorrow."}];
+EGGS.forEach((e, i) => e.id = i);
+const eggLayer = $('eggs');
+const eggState = { list: [], next: 0, deck: [] };
+/* 收集紀錄：存在這位觀眾自己的瀏覽器 · collection is kept in this viewer's own browser */
+const BOOK_KEY = 'eoh-collected-v1';
+const collected = new Set();
+try { JSON.parse(localStorage.getItem(BOOK_KEY) || '[]').forEach(i => { if (EGGS[i]) collected.add(i); }); } catch (_) {}
+const runSeen = new Set();
+function collect(e) {
+  runSeen.add(e.id);
+  if (collected.has(e.id)) return;
+  collected.add(e.id);
+  try { localStorage.setItem(BOOK_KEY, JSON.stringify([...collected])); } catch (_) {}
+}
+// 沒聽過的優先出現，重玩幾次就能集滿 · unheard lines come first so replays fill the book
+const unseenFirst = arr => arr.sort(() => Math.random() - 0.5).sort((a, b) => (collected.has(b.id) ? 1 : 0) - (collected.has(a.id) ? 1 : 0));
+function drawEgg(type) {
+  if (type === 'early') { const pool = unseenFirst(EGGS.filter(e => e.type === 'early')); return pool[pool.length - 1]; }
+  if (!eggState.deck.length) eggState.deck = unseenFirst(EGGS.filter(e => e.type !== 'early'));
+  return eggState.deck.pop();
+}
+const eggV = new THREE.Vector3();
+function eggScreen(d) {
+  eggV.set(d.x, 1.62, d.z).project(camera);
+  return { x: (eggV.x * 0.5 + 0.5) * innerWidth, y: (-eggV.y * 0.5 + 0.5) * innerHeight, front: eggV.z < 1 };
+}
+function spawnEgg(deskIdx, type, life = 4.4) {
+  const e = drawEgg(type); if (!e) return;
+  collect(e);
+  const el = document.createElement('div');
+  el.className = 'egg'; el.dataset.type = e.type;
+  el.innerHTML = `<div class="line"><span class="who"></span><span class="zh"></span></div><div class="en"></div>`;
+  el.querySelector('.who').textContent = e.who;
+  el.querySelector('.zh').textContent = e.zh;
+  el.querySelector('.en').textContent = e.en;
+  eggLayer.appendChild(el);
+  const egg = { el, desk: desks[deskIdx], born: U.uTime.value, life };
+  eggState.list.push(egg);
+  placeEgg(egg);
+  requestAnimationFrame(() => el.classList.add('on'));
+}
+function placeEgg(egg) {
+  const sp = eggScreen(egg.desk);
+  egg.el.style.visibility = sp.front ? 'visible' : 'hidden';
+  egg.el.style.transform = `translate3d(${(sp.x - 14).toFixed(1)}px, ${(sp.y - egg.el.offsetHeight - 10).toFixed(1)}px, 0)`;
+}
+function pickEggDesk() {
+  for (let k = 0; k < 30; k++) {
+    const i = Math.floor(Math.random() * N), d = desks[i];
+    if (d.dist > 48 || d.dist < 5 || infoArr[i * 4 + 2] < 1e5) continue;
+    const sp = eggScreen(d);
+    if (!sp.front || sp.x < innerWidth * 0.08 || sp.x > innerWidth * 0.78 || sp.y < innerHeight * 0.24 || sp.y > innerHeight * 0.74) continue;
+    if (eggState.list.some(o => { const q = eggScreen(o.desk), w = o.el.offsetWidth || 260, h = o.el.offsetHeight || 60;
+      return sp.x > q.x - Math.min(330, innerWidth * 0.66) - 16 && sp.x < q.x + w + 16 && Math.abs(q.y - sp.y) < h + 24; })) continue;
+    return i;
+  }
+  return -1;
+}
+function clearEggs(fast = true) {
+  eggState.list.forEach(o => { o.life = Math.min(o.life, U.uTime.value - o.born + (fast ? 0.01 : 0.6)); });
+}
+function updateEggs(now) {
+  if (S.started && !S.released && !S.afterHours && now > eggState.next) {
+    eggState.next = now + 1.6 + Math.random() * 1.8;
+    if (eggState.list.length < 3) { const i = pickEggDesk(); if (i >= 0) spawnEgg(i); }
+  }
+  for (let k = eggState.list.length - 1; k >= 0; k--) {
+    const o = eggState.list[k], age = now - o.born;
+    if (age > o.life) { o.el.classList.remove('on'); if (age > o.life + 0.6) { o.el.remove(); eggState.list.splice(k, 1); } }
+    placeEgg(o);
+  }
+}
+const BOOK_SECTIONS = [
+  ['os', '內心 OS', 'Inner voice'], ['yes', '勉強答應', 'Fine, I’ll do it'], ['gossip', '茶水間八卦', 'Pantry gossip'],
+  ['coworker', '那位同事', 'That coworker'], ['msg', '訊息通知', 'Notifications'], ['early', '提早下班', 'Leaving early']
+];
+function renderBook() {
+  const body = $('bookBody'); body.textContent = '';
+  BOOK_SECTIONS.forEach(([type, zh, en]) => {
+    const items = EGGS.filter(e => e.type === type);
+    const got = items.filter(e => collected.has(e.id)).length;
+    const sec = document.createElement('section'); sec.className = 'book-sec';
+    sec.innerHTML = `<h4><div>${zh}<i>${en}</i></div><span>${got} / ${items.length}</span></h4><ul class="book-list"></ul>`;
+    const ul = sec.querySelector('ul');
+    items.forEach(e => {
+      const li = document.createElement('li');
+      const has = collected.has(e.id);
+      li.className = has ? (runSeen.has(e.id) ? 'new' : '') : 'locked';
+      li.innerHTML = `<span class="who"></span><div class="txt"><div class="zh"></div>${has ? '<div class="en"></div>' : ''}</div>`;
+      li.querySelector('.who').textContent = has ? e.who : '—';
+      li.querySelector('.zh').textContent = has ? e.zh : '???';
+      if (has) li.querySelector('.en').textContent = e.en;
+      ul.appendChild(li);
+    });
+    body.appendChild(sec);
+  });
+  $('bookCount').textContent = collected.size;
+}
+function updateTally() {
+  $('runN').textContent = '+' + runSeen.size;
+  $('totalN').textContent = `${collected.size} / ${EGGS.length}`;
+}
+function openBook() { renderBook(); $('book').hidden = false; $('bookClose').focus(); }
+function closeBook() { $('book').hidden = true; }
+$('openBook').addEventListener('click', openBook);
+$('bookClose').addEventListener('click', closeBook);
+$('book').addEventListener('click', e => { if (e.target === $('book')) closeBook(); });
+$('introCredit').addEventListener('click', e => e.stopPropagation());
+let subTimer = 0;
+function showCue(zh, en, persist = false) {
+  const box = $('sub');
+  box.classList.remove('show');
+  clearTimeout(subTimer);
+  setTimeout(() => {
+    clearTimeout(subTimer);
+    $('subZh').textContent = zh; $('subEn').textContent = en;
+    box.classList.add('show');
+    if (!persist) subTimer = setTimeout(() => box.classList.remove('show'), 6200);
+  }, box.textContent.trim() ? 700 : 50);
+}
+
+function freeMonitor(idx, now) {
+  if (infoArr[idx * 4 + 2] < 1e5) return;
+  infoArr[idx * 4 + 2] = now; infoAttr.needsUpdate = true;
+  const d = desks[idx];
+  pRel[idx] = now + 0.15;
+  for (let k = N; k < PN; k++) {
+    const dx = pHome[k * 4] - d.x, dz = pHome[k * 4 + 2] - d.z;
+    if (dx * dx + dz * dz < 20 && pRel[k] > 1e5) pRel[k] = now + 0.2 + Math.random() * 0.9;
+  }
+  pRelAttr.needsUpdate = true;
+  spawnEgg(idx, 'early', 3.6);
+  S.freed++; $('freedN').textContent = S.freed; $('counter').classList.add('on');
+  const f = PENTA[(S.freed * 3) % PENTA.length];
+  Sound.pluck(f, 0.07); Sound.pluck(f * 1.5, 0.035, 0.12);
+  // 每放走一塊螢幕，時間也往前推一點 · each freed screen nudges the clock forward
+  setQ(S.q + 0.006);
+}
+
+function triggerRelease(now) {
+  S.released = true; S.releaseT = now; U.uRelease.value = now;
+  S.releaseClock = S.afterHours ? S.sim : END;
+  clearEggs(false);
+  Sound.release();
+  $('hold').classList.add('done');
+  $('clockLabel').innerHTML = '自由時間 <i>free time</i><b id="remain">00:00:00</b>';
+  $('digits').classList.add('free');
+  canvas.classList.remove('hovering'); U.uHover.value = -1;
+}
+
+function setClockLabel() {
+  $('clockLabel').innerHTML = S.afterHours ? '已經下班 <i>off the clock</i><b id="remain">00:00:00</b>' : '距離下班 <i>until clock-out</i><b id="remain">00:00:00</b>';
+  $('hold').classList.toggle('done', S.afterHours);
+}
+function restart() {
+  const now = U.uTime.value;
+  setupFromClock(); buildCues(); S.startedAt = now; S.released = false;
+  clearEggs(); eggState.next = now + 3; $('sub').classList.remove('show'); S.releaseT = Infinity; S.freed = 0; S.ending = false;
+  S.cuesShown.clear();
+  U.uRelease.value = 1e6;
+  for (let k = 0; k < N; k++) infoArr[k * 4 + 2] = 1e6;
+  infoAttr.needsUpdate = true;
+  pRel.fill(1e6); pRelAttr.needsUpdate = true;
+  U.uRipples.value.forEach(r => r.set(0, 0, -1e3, 0));
+  $('freedN').textContent = '0'; $('counter').classList.remove('on');
+  $('endbar').classList.remove('on'); $('hud').classList.remove('ending');
+  runSeen.clear(); closeBook();
+  $('digits').classList.remove('free');
+  setClockLabel();
+  cam.yaw = cam.tYaw = 0; cam.pitch = cam.tPitch = 0; cam.dolly = 0; cam.tDolly = 0;
+  Sound.reset();
+  flash(0.25);
+}
+
+function flash(a) {
+  const el = $('flash'); el.style.transition = 'none'; el.style.opacity = a;
+  requestAnimationFrame(() => { el.style.transition = 'opacity 2.2s ease'; el.style.opacity = 0; });
+}
+
+/* =========================================================
+   互動 · interaction
+   ========================================================= */
+const cam = { yaw: 0, pitch: 0, tYaw: 0, tPitch: 0, dolly: 0, tDolly: 0 };
+const pointer = { x: 0, y: 0, nx: 0, ny: 0, inside: false, down: false, moved: 0, sx: 0, sy: 0, dirty: true };
+const ray = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+
+canvas.addEventListener('pointerdown', e => {
+  pointer.down = true; pointer.moved = 0; pointer.sx = e.clientX; pointer.sy = e.clientY;
+  pointer.x = e.clientX; pointer.y = e.clientY; pointer.dirty = true;
+  pointer.nx = e.clientX / innerWidth * 2 - 1; pointer.ny = -(e.clientY / innerHeight) * 2 + 1;
+  try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+});
+canvas.addEventListener('pointermove', e => {
+  const dx = e.clientX - pointer.x, dy = e.clientY - pointer.y;
+  pointer.x = e.clientX; pointer.y = e.clientY; pointer.inside = true; pointer.dirty = true;
+  pointer.nx = e.clientX / innerWidth * 2 - 1; pointer.ny = -(e.clientY / innerHeight) * 2 + 1;
+  if (pointer.down) {
+    pointer.moved += Math.abs(dx) + Math.abs(dy);
+    if (pointer.moved > 5) {
+      canvas.classList.add('dragging');
+      cam.tYaw -= dx * 0.0032; cam.tPitch -= dy * 0.0026;
+      cam.tYaw = Math.max(-1.35, Math.min(1.35, cam.tYaw));
+      cam.tPitch = Math.max(-0.45, Math.min(0.95, cam.tPitch));
+    }
+  }
+});
+canvas.addEventListener('pointerleave', () => { pointer.inside = false; });
+const endPointer = e => {
+  if (!pointer.down) return;
+  pointer.down = false; canvas.classList.remove('dragging');
+  if (pointer.moved <= 5 && e.type === 'pointerup') handleClick();
+};
+canvas.addEventListener('pointerup', endPointer);
+canvas.addEventListener('pointercancel', endPointer);
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  if (!S.started) return;
+  const d = Math.min(Math.abs(e.deltaY), 240) * (e.deltaMode === 1 ? 30 : 1);
+  if (!S.released) setQ(S.q + d * 0.0006);
+  else cam.tDolly = Math.max(-70, Math.min(10, cam.tDolly - Math.sign(e.deltaY) * Math.min(d, 120) * 0.08));
+}, { passive: false });
+
+function pickMonitor() {
+  ndc.set(pointer.nx, pointer.ny); ray.setFromCamera(ndc, camera);
+  const hits = ray.intersectObject(monMesh, false);
+  for (const h of hits) {
+    if (h.distance > 70) break;
+    if (infoArr[h.instanceId * 4 + 2] > 1e5) return h.instanceId;
+  }
+  return -1;
+}
+function handleClick() {
+  if (!S.started) return;
+  const now = U.uTime.value;
+  if (!S.released) {
+    const id = pickMonitor();
+    if (id >= 0) freeMonitor(id, now);
+  } else {
+    ndc.set(pointer.nx, pointer.ny); ray.setFromCamera(ndc, camera);
+    const o = ray.ray.origin, d = ray.ray.direction;
+    if (d.y < -0.002) {
+      const t = -o.y / d.y;
+      if (t < 400) {
+        const p = o.clone().addScaledVector(d, t);
+        const arr = U.uRipples.value; let slot = 0;
+        for (let i = 1; i < arr.length; i++) if (arr[i].z < arr[slot].z) slot = i;
+        arr[slot].set(p.x, p.z, now, 1);
+        Sound.pluck(PENTA[Math.floor(Math.random() * 5)] * 0.5, 0.08);
+      }
+    } else {
+      Sound.pluck(PENTA[Math.floor(Math.random() * PENTA.length)], 0.05);
+    }
+  }
+}
+
+/* 時間條：只能往前拖（時間不會倒流）· time bar: forward only, time never runs backwards */
+const scrub = { active: false };
+const scrubEl = $('scrub');
+function scrubTo(e) {
+  const r = scrubEl.getBoundingClientRect();
+  setQ(clamp01((e.clientX - r.left) / r.width));
+}
+scrubEl.addEventListener('pointerdown', e => {
+  if (!S.started || S.released || S.afterHours) return;
+  e.preventDefault(); e.stopPropagation();
+  scrub.active = true; scrubEl.classList.add('active');
+  try { scrubEl.setPointerCapture(e.pointerId); } catch (_) {}
+  scrubTo(e);
+});
+scrubEl.addEventListener('pointermove', e => { if (scrub.active) scrubTo(e); });
+['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => scrubEl.addEventListener(ev, () => { scrub.active = false; scrubEl.classList.remove('active'); }));
+const setHold = v => { S.hold = v; $('hold').classList.toggle('active', v); };
+addEventListener('keydown', e => {
+  if (!$('book').hidden) { if (e.code === 'Escape') closeBook(); return; }
+  if (e.code === 'Space') { e.preventDefault(); if (S.started) setHold(true); }
+  if (e.code === 'KeyR' && S.started) restart();
+  if (e.code === 'KeyM') toggleMute();
+  if (e.code === 'KeyH') $('hud').classList.toggle('hidden');
+});
+addEventListener('keyup', e => { if (e.code === 'Space') setHold(false); });
+const holdBtn = $('hold');
+holdBtn.addEventListener('pointerdown', e => { e.preventDefault(); holdBtn.setPointerCapture(e.pointerId); setHold(true); });
+['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => holdBtn.addEventListener(ev, () => setHold(false)));
+function toggleMute() {
+  Sound.setMuted(!Sound.muted);
+  $('mute').innerHTML = Sound.muted ? '聲音 關<i>Sound off</i>' : '聲音 開<i>Sound on</i>';
+}
+$('mute').addEventListener('click', toggleMute);
+$('again').addEventListener('click', restart);
+
+$('intro').addEventListener('click', () => {
+  Sound.init();
+  setupFromClock(); buildCues(); setClockLabel();
+  S.startedAt = U.uTime.value;
+  S.started = true;
+  setTimeout(() => $('hints').classList.add('quiet'), 14000);
+  $('intro').classList.add('gone');
+  $('hud').classList.add('on');
+  canvas.focus();
+});
+
+let curW = 0, curH = 0;
+function fitSize() {
+  const w = Math.max(2, innerWidth), h = Math.max(2, innerHeight);
+  if (w === curW && h === curH) return;
+  curW = w; curH = h;
+  camera.aspect = mirrorCam.aspect = w / h; camera.updateProjectionMatrix(); mirrorCam.updateProjectionMatrix();
+  renderer.setSize(w, h); composer.setSize(w, h);
+  gradePass.uniforms.uRes.value.set(w, h);
+  U.uPx.value = h * DPR;
+  reflRT.setSize(Math.max(2, Math.floor(w * DPR * 0.5)), Math.max(2, Math.floor(h * DPR * 0.5)));
+}
+addEventListener('resize', fitSize);
+fitSize();
+
+/* =========================================================
+   主迴圈 · main loop
+   ========================================================= */
+const clock = new THREE.Clock();
+const sunDir0 = CLOCK_POS.clone().sub(CAM0).normalize();
+const sunAz = Math.atan2(sunDir0.x, -sunDir0.z), sunEl0 = Math.asin(sunDir0.y);
+const cOfficeFog = new THREE.Color(0.030, 0.062, 0.072), cSunFog = new THREE.Color(0.34, 0.12, 0.13), cNightFog = new THREE.Color(0.028, 0.034, 0.08);
+const cHemiSkyO = new THREE.Color(0x6f8796), cHemiGndO = new THREE.Color(0x0b0f12), cHemiSkyS = new THREE.Color(0xc06a7a), cHemiGndS = new THREE.Color(0x301510);
+const cSunO = new THREE.Color(0xcfe3ff), cSunS = new THREE.Color(0xffa060);
+const cHaloO = new THREE.Color(0.22, 0.48, 0.58), cHaloS = new THREE.Color(0.32, 0.12, 0.04);
+const tmpC = new THREE.Color(), tmpV = new THREE.Vector3(), fwd = new THREE.Vector3();
+let fpsAcc = 0, fpsN = 0; window.__fps = 0;
+
+function frame(ts, manualDt) {
+  fitSize();
+  const dt = manualDt !== undefined ? manualDt : Math.min(clock.getDelta(), 0.05);
+  const now = (U.uTime.value += dt);
+  fpsAcc += dt; fpsN++; if (fpsAcc > 1) { window.__fps = Math.round(fpsN / fpsAcc); fpsAcc = 0; fpsN = 0; }
+
+  // ---- 時間推進 · advance office time
+  if (!S.started) { setupFromClock(); }
+  else if (!S.released) {
+    const p0 = S.q;
+    if (S.afterHours) {
+      // 已經下班：時鐘照真實時間走，幾秒後鐘聲響起 · already off: real-time clock, bells after a few seconds
+      S.sim += dt;
+      if (now - S.startedAt > 6) triggerRelease(now);
+    } else {
+      if (!scrub.active) setQ(S.q + dt / STORY * (S.hold ? HOLD_MULT : 1));
+      if (S.q >= 1) { S.sim = END; triggerRelease(now); }
+    }
+    if (now - S.lastTick > 1) { S.lastTick = now; Sound.tick(0.05 + 0.18 * p0 * p0); }
+  }
+  // 已下班時，辦公室本來就快空了 · after hours the office is already nearly empty
+  const p = S.afterHours ? 0.93 : S.q;
+  const tr = S.released ? now - S.releaseT : -1;
+
+  // ---- 字幕 · cues
+  if (S.started) {
+    if (!S.released) cuesPre.forEach((c, i) => { if (p >= c[0] && !S.cuesShown.has('a' + i)) { S.cuesShown.add('a' + i); showCue(c[1], c[2]); } });
+    else cuesPost.forEach((c, i) => { if (tr >= c[0] && !S.cuesShown.has('b' + i)) { S.cuesShown.add('b' + i); showCue(c[1], c[2], c[3]); } });
+  }
+  if (S.released && tr > 79 && !S.ending) { S.ending = true; updateTally(); $('endbar').classList.add('on'); $('hud').classList.add('ending'); }
+
+  // ---- 場景參數 · scene parameters
+  const panelFrac = clamp01((lerp(230, -6, smooth(0.28, 0.975, p))) / 160);
+  U.uWaveR.value = lerp(230, -6, smooth(0.28, 0.975, p));
+  U.uOffFrac.value = smooth(0.12, 0.985, p) * 0.58;
+  const officeLight = S.released ? 0.3 * (1 - smooth(0, 2, tr)) : 0.3 + 0.7 * panelFrac;
+  U.uOfficeLight.value = officeLight;
+  const office = S.released ? 1 - smooth(0.4, 5.5, tr) : 1;
+  const night = S.released ? smooth(28, 72, tr) * 0.94 : 0;
+  U.uOffice.value = office; U.uNight.value = night;
+  U.uWater.value = S.released ? smooth(1.5, 7, tr) : 0;
+  U.uLantern.value = S.released ? smooth(2, 12, tr) * (0.6 + 0.4 * night) : 0;
+  const el = S.released ? lerp(sunEl0, -0.075, smooth(3, 78, tr)) : sunEl0;
+  U.uSunDir.value.set(Math.sin(sunAz) * Math.cos(el), Math.sin(el), -Math.cos(sunAz) * Math.cos(el));
+  U.uFogDensity.value = lerp(0.0042, 0.0115, office);
+  tmpC.copy(cSunFog).lerp(cNightFog, night).lerp(tmpC.clone().copy(cOfficeFog).multiplyScalar(0.35 + 0.65 * officeLight), office);
+  U.uFogColor.value.copy(tmpC); scene.fog.color.copy(tmpC); scene.fog.density = U.uFogDensity.value;
+  hemi.color.copy(cHemiSkyS).lerp(cHemiSkyO, office); hemi.groundColor.copy(cHemiGndS).lerp(cHemiGndO, office);
+  hemi.intensity = lerp(0.55 * (1 - night * 0.7), 0.12 + 0.45 * officeLight, office);
+  sun.color.copy(cSunS).lerp(cSunO, office);
+  sun.intensity = lerp(1.5 * (1 - night), 0.15 + 1.0 * officeLight, office);
+  if (office < 1) sun.position.copy(U.uSunDir.value).multiplyScalar(50); else sun.position.set(6, 20, 8);
+  U.uMouseStr.value += ((pointer.inside ? 1 : 0) - U.uMouseStr.value) * Math.min(1, dt * 3);
+
+  // ---- 時鐘 · clock
+  const sec = S.sim % 60, mins = (S.sim / 60) % 60, hrs = (S.sim / 3600) % 12;
+  secHand.rotation.z = -sec / 60 * Math.PI * 2;
+  minHand.rotation.z = -mins / 60 * Math.PI * 2;
+  hourHand.rotation.z = -hrs / 12 * Math.PI * 2;
+  const cf = S.released ? 1 - smooth(2.5, 9, tr) : 1;
+  clockMats.forEach(m => m.opacity = cf);
+  ring.scale.setScalar(1 + (1 - cf) * 0.35); ring2.scale.setScalar(1 + (1 - cf) * 0.7);
+  clockGroup.visible = cf > 0.002;
+  haloMat.color.copy(cHaloS).lerp(cHaloO, office).multiplyScalar(S.released ? lerp(1.0, 0.0, smooth(4, 20, tr)) : 0.55 + 0.25 * p);
+  halo.visible = haloMat.color.r + haloMat.color.g > 0.01;
+  // 18:00 的鐘聲閃光 · flash on each bell strike
+  let fl = 0;
+  if (S.released) for (let i = 0; i < Sound.bellStrikes; i++) { const a = tr - i * 1.75; if (a > 0) fl += Math.exp(-a * 3.2) * (i === 0 ? 0.32 : 0.1); }
+  gradePass.uniforms.uFlash.value = fl;
+  gradePass.uniforms.uTime.value = now;
+
+  // ---- 攝影機 · camera
+  const idle = S.started ? 0 : 1;
+  cam.yaw += (cam.tYaw - cam.yaw) * Math.min(1, dt * 4);
+  cam.pitch += (cam.tPitch - cam.pitch) * Math.min(1, dt * 4);
+  cam.dolly += (cam.tDolly - cam.dolly) * Math.min(1, dt * 2);
+  const rise = S.released ? smooth(3, 32, tr) : 0;
+  const px = pointer.nx * (1 - idle), py = pointer.ny * (1 - idle);
+  const yaw = cam.yaw - px * 0.07 + Math.sin(now * 0.05) * 0.05 * idle;
+  const pitch = 0.05 + rise * 0.2 + cam.pitch + py * 0.04;
+  camera.position.set(CAM0.x + px * 0.5 + Math.sin(now * 0.21) * 0.06, CAM0.y + rise * 5.2 + Math.sin(now * 0.37) * 0.04, CAM0.z + cam.dolly);
+  camera.rotation.set(pitch, yaw, Math.sin(now * 0.17) * 0.004, 'YXZ');
+  camera.updateMatrixWorld();
+  U.uCamPos.value.copy(camera.position);
+  sky.position.copy(camera.position);
+
+  // ---- 滑鼠在 3D 中的位置 · cursor in 3D
+  ndc.set(pointer.nx, pointer.ny); ray.setFromCamera(ndc, camera);
+  const ro = ray.ray.origin, rd = ray.ray.direction;
+  let tHit = S.released ? 22 : 9;
+  if (!S.released && rd.y < -0.01) tHit = Math.min(tHit, (ro.y - 1.8) / -rd.y);
+  U.uMouse.value.copy(ro).addScaledVector(rd, Math.max(2, tHit));
+
+  // ---- 懸停 · hover
+  if (S.started && !S.released && pointer.dirty && !pointer.down) {
+    pointer.dirty = false;
+    const id = pickMonitor();
+    U.uHover.value = id;
+    canvas.classList.toggle('hovering', id >= 0);
+  }
+
+  // ---- 夜裡的零星音符 · sparse notes at night
+  if (S.released && tr > 12 && now > S.nextPluck && !Sound.coSrc) {
+    S.nextPluck = now + 1.6 + Math.random() * 3.5;
+    Sound.pluck(PENTA[Math.floor(Math.random() * PENTA.length)] * (Math.random() < 0.3 ? 0.5 : 1), 0.03 + 0.03 * Math.random());
+  }
+
+  updateEggs(now);
+
+  // ---- HUD
+  if (!S.released) {
+    $('digits').textContent = fmt(S.sim);
+    if (!S.started) $('kicker').innerHTML = `${hhmm(S.sim).replace(':', ' : ')} &nbsp;·&nbsp; FLOOR 23`;
+    const r0 = $('remain'); if (r0) r0.textContent = S.afterHours ? fmt(S.sim - END) : fmt(END - S.sim);
+    $('bar').style.width = (p * 100).toFixed(2) + '%';
+    $('knob').style.left = (p * 100).toFixed(2) + '%';
+  } else {
+    $('digits').textContent = fmt(S.releaseClock + tr);
+    const r = $('remain'); if (r) r.textContent = fmt(S.releaseClock - END + tr);
+    $('bar').style.width = '100%';
+    $('knob').style.left = '100%';
+  }
+
+  // ---- 太陽 / 時鐘在螢幕上的位置 → 光束 · god rays
+  tmpV.copy(camera.position).addScaledVector(U.uSunDir.value, 1000).project(camera);
+  camera.getWorldDirection(fwd);
+  const facing = fwd.dot(U.uSunDir.value);
+  const onScreen = 1 - smooth(1.0, 1.8, Math.max(Math.abs(tmpV.x), Math.abs(tmpV.y)));
+  godPass.uniforms.uSun.value.set(tmpV.x * 0.5 + 0.5, tmpV.y * 0.5 + 0.5);
+  const baseRays = S.released ? lerp(0.5, 0.42, smooth(1, 6, tr)) * (1 - smooth(55, 80, tr) * 0.9) : 0.42 + 0.25 * p;
+  godPass.uniforms.uStrength.value = facing > 0.1 ? baseRays * onScreen : 0;
+  godPass.uniforms.uTint.value.copy(cHaloO).lerp(new THREE.Color(1, 0.6, 0.35), 1 - office).multiplyScalar(1.6);
+  godPass.uniforms.uThresh.value.set(lerp(3.2, 1.0, office), lerp(7.0, 3.2, office));
+  bloom.strength = lerp(0.5, 0.62, office) + fl * 0.6;
+  bloom.threshold = lerp(1.0, 0.85, office);
+  renderer.toneMappingExposure = lerp(0.9, 1.0, office);
+
+  // ---- 水面倒影 · water reflection
+  if (U.uWater.value > 0.001) {
+    mirrorCam.position.set(camera.position.x, -camera.position.y, camera.position.z);
+    mirrorCam.rotation.set(-camera.rotation.x, camera.rotation.y, -camera.rotation.z, 'YXZ');
+    mirrorCam.updateMatrixWorld();
+    U.uMirrorVP.value.multiplyMatrices(mirrorCam.projectionMatrix, mirrorCam.matrixWorldInverse);
+    renderer.setRenderTarget(reflRT);
+    renderer.setClearColor(0x000000, 0); renderer.clear();
+    renderer.render(scene, mirrorCam);
+    renderer.setRenderTarget(null);
+  }
+
+  composer.render();
+  if (manualDt === undefined) requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// 給測試用的掛鉤 · hooks for testing
+window.__eoh = { collected, openBook, eggState, spawnEgg, Sound, setQ, remAt, qAt, step: (n = 1, dt = 1 / 60) => { for (let i = 0; i < n; i++) frame(0, dt); }, S, U, restart, godPass, bloom, haloMat, monMat, renderer, triggerRelease: () => { S.sim = END - 0.01; }, setupFromClock, buildCues, setClockLabel, fakeNow: (h, m = 0, day) => { const D = Date; window.Date = class extends D { constructor(...a) { if (a.length) super(...a); else { super(); this.setHours(h, m, 0, 0); if (day !== undefined) this.setDate(this.getDate() - this.getDay() + day); } } }; }, camera };
+</script>
+</body>
+</html>
